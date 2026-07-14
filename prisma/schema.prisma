@@ -1,0 +1,596 @@
+generator client {
+  provider        = "prisma-client-js"
+  engineType      = "library"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["super_admin"]
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+enum Environment {
+  DEVELOPMENT
+  QA
+  STAGING
+  PRODUCTION
+
+  @@schema("super_admin")
+}
+
+enum ClientStatus {
+  ACTIVE
+  SUSPENDED
+  DISABLED
+  DELETED
+
+  @@schema("super_admin")
+}
+
+enum ApiStatus {
+  ACTIVE
+  DEPRECATED
+  DISABLED
+
+  @@schema("super_admin")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+
+  @@schema("super_admin")
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+
+  @@schema("super_admin")
+}
+
+enum ApiKeyPermission {
+  READ
+  WRITE
+  DELETE
+  ADMIN
+
+  @@schema("super_admin")
+}
+
+enum HttpMethod {
+  GET
+  POST
+  PUT
+  PATCH
+  DELETE
+  OPTIONS
+  HEAD
+
+  @@schema("super_admin")
+}
+
+enum ApiKeyType {
+  PRODUCTION
+  STAGING
+  DEVELOPMENT
+
+  @@schema("super_admin")
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  VIEWER
+
+  @@schema("super_admin")
+}
+
+enum HealthCheckType {
+  AUTOMATED
+  MANUAL
+
+  @@schema("super_admin")
+}
+
+enum AuditAction {
+  CLIENT_CREATED
+  CLIENT_UPDATED
+  CLIENT_DISABLED
+  CLIENT_SUSPENDED
+  API_KEY_CREATED
+  API_KEY_REVOKED
+  MICROSERVICE_CREATED
+  MICROSERVICE_UPDATED
+  API_ENDPOINT_CREATED
+  API_ENDPOINT_UPDATED
+  API_ENDPOINT_DELETED
+  LOGIN
+  LOGOUT
+  ACCESS_GRANTED
+  ACCESS_REVOKED
+
+  @@schema("super_admin")
+}
+
+enum AuditEntity {
+  CLIENT
+  API_KEY
+  MICROSERVICE
+  USER
+  SUBSCRIPTION
+  SYSTEM_SETTING
+  MODULE
+
+  @@schema("super_admin")
+}
+
+enum ModuleStatus {
+  ACTIVE
+  DISABLED
+
+  @@schema("super_admin")
+}
+
+enum LogStatus {
+  STARTED
+  COMPLETED
+  FAILED
+  CANCELLED
+
+  @@schema("super_admin")
+}
+
+// -----------------------------------------------------------------------------
+// USER & AUTHENTICATION MODELS
+// -----------------------------------------------------------------------------
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         AdminRole @default(SUPER_ADMIN)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+  createdById  String?
+  updatedById  String?
+  deletedById  String?
+
+  auditLogs AuditLog[]
+  sessions  AdminSession[]
+  accounts  AdminAccount[]
+
+  // Back-relations for auditing metadata
+
+  healthChecksChecked   HealthCheck[]   @relation("HealthCheckCheckedBy")
+  systemSettingsUpdated SystemSetting[] @relation("SystemSettingUpdatedBy")
+
+  clientsCreated Client[]       @relation("ClientCreatedBy")
+  clientsUpdated Client[]       @relation("ClientUpdatedBy")
+  clientsDeleted Client[]       @relation("ClientDeletedBy")
+  modulesCreated Module[]       @relation("ModuleCreatedBy")
+  modulesUpdated Module[]       @relation("ModuleUpdatedBy")
+  modulesDeleted Module[]       @relation("ModuleDeletedBy")
+  apisCreated    Microservice[] @relation("MicroserviceCreatedBy")
+  apisUpdated    Microservice[] @relation("MicroserviceUpdatedBy")
+  apisDeleted    Microservice[] @relation("MicroserviceDeletedBy")
+  apiKeysCreated ApiKey[]       @relation("ApiKeyCreatedBy")
+  apiKeysUpdated ApiKey[]       @relation("ApiKeyUpdatedBy")
+  apiKeysDeleted ApiKey[]       @relation("ApiKeyDeletedBy")
+
+  @@schema("super_admin")
+}
+
+model AdminSession {
+  id           String    @id @default(uuid())
+  sessionToken String    @unique
+  userId       String
+  expires      DateTime
+  user         AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@schema("super_admin")
+}
+
+model AdminAccount {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@schema("super_admin")
+}
+
+model AdminVerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@schema("super_admin")
+}
+
+// -----------------------------------------------------------------------------
+// CLIENT MODELS
+// -----------------------------------------------------------------------------
+
+model Client {
+  id               String       @id @default(uuid())
+  companyName      String
+  contactName      String?
+  email            String       @unique
+  phone            String?
+  notes            String?      @db.Text
+  status           ClientStatus @default(ACTIVE)
+  stripeCustomerId String?
+
+  lastRequestAt DateTime?
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  createdById String?
+  updatedById String?
+  deletedById String?
+  createdBy   AdminUser? @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   AdminUser? @relation("ClientUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy   AdminUser? @relation("ClientDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  apiKeys             ApiKey[]
+  subscriptions       Subscription[]
+  requestLogs         RequestLog[]
+  clientAccess        ClientAccess[]
+
+  @@schema("super_admin")
+}
+
+model ApiKey {
+  id             String             @id @default(uuid())
+  clientId       String
+  name           String // e.g., "Shopify Production"
+  keyHash        String             @unique
+  status         ApiKeyStatus       @default(ACTIVE)
+  type           ApiKeyType         @default(PRODUCTION)
+  permissions    ApiKeyPermission[] // Array of enums for scopes
+  allowedDomains String[] // Array of allowed CORS origins
+
+  // Usage tracking
+  requestCount Int       @default(0)
+  lastUsedAt   DateTime?
+
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  createdById String?
+  updatedById String?
+  deletedById String?
+  createdBy   AdminUser? @relation("ApiKeyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   AdminUser? @relation("ApiKeyUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy   AdminUser? @relation("ApiKeyDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  allowedModules       ApiKeyModuleAccess[]
+  allowedMicroservices ApiKeyMicroserviceAccess[]
+
+  @@index([clientId])
+  @@schema("super_admin")
+}
+
+model Subscription {
+  id           String             @id @default(uuid())
+  clientId     String
+  name         String? // e.g. "Professional Plan"
+  plan         String // e.g. "STARTER", "PROFESSIONAL", "ENTERPRISE"
+  billingCycle String             @default("MONTHLY") // "MONTHLY", "ANNUALLY"
+  stripePlanId String?
+  status       SubscriptionStatus @default(ACTIVE)
+  limits       Json? // e.g. { "requestsPerMonth": 100000, "concurrentRequests": 10 }
+  
+  startDate    DateTime?
+  endDate      DateTime?
+  renewalDate  DateTime?
+
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  client         Client                     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  allowedModules SubscriptionModuleAccess[]
+
+  @@index([clientId])
+  @@schema("super_admin")
+}
+
+// -----------------------------------------------------------------------------
+// MODULE MODELS (Business Groupings)
+// -----------------------------------------------------------------------------
+
+model Module {
+  id          String       @id @default(uuid())
+  slug        String       @unique // e.g., "tryon"
+  name        String // e.g., "TryOn Module"
+  description String?      @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  status      ModuleStatus @default(ACTIVE)
+  deletedAt   DateTime?
+
+  createdById String?
+  updatedById String?
+  deletedById String?
+  createdBy   AdminUser? @relation("ModuleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   AdminUser? @relation("ModuleUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy   AdminUser? @relation("ModuleDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  microservices        Microservice[]
+  subscriptionAccess   SubscriptionModuleAccess[]
+  apiKeyModuleAccesses ApiKeyModuleAccess[]
+
+  @@schema("super_admin")
+}
+
+model SubscriptionModuleAccess {
+  subscriptionId String
+  moduleId       String
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  module       Module       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@id([subscriptionId, moduleId])
+  @@schema("super_admin")
+}
+
+model ApiKeyModuleAccess {
+  apiKeyId String
+  moduleId String
+
+  apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@id([apiKeyId, moduleId])
+  @@schema("super_admin")
+}
+
+model ApiKeyMicroserviceAccess {
+  apiKeyId       String
+  microserviceId String
+
+  apiKey       ApiKey       @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  microservice Microservice @relation(fields: [microserviceId], references: [id], onDelete: Cascade)
+
+  @@id([apiKeyId, microserviceId])
+  @@schema("super_admin")
+}
+
+// -----------------------------------------------------------------------------
+// MICROSERVICE MODELS
+// -----------------------------------------------------------------------------
+
+model Microservice {
+  id          String    @id @default(uuid())
+  slug        String    @unique // e.g., "tryon2buy"
+  displayName String // e.g., "TryOn2Buy"
+  description String?   @db.Text
+  version     String    @default("1.0.0") // Deprecated: move to ApiVersion
+  moduleId    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  createdById String?
+  updatedById String?
+  deletedById String?
+  createdBy   AdminUser? @relation("MicroserviceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   AdminUser? @relation("MicroserviceUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedBy   AdminUser? @relation("MicroserviceDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  module       Module?                    @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  environments MicroserviceEnvironment[]
+  clientAccess ClientAccess[]
+  requestLogs  RequestLog[]
+  healthChecks HealthCheck[]
+  apiVersions  ApiVersion[]
+  apiKeyAccess ApiKeyMicroserviceAccess[]
+
+  @@schema("super_admin")
+}
+
+model ApiVersion {
+  id             String    @id @default(uuid())
+  microserviceId String
+  version        String // e.g., "v1", "v2", "beta"
+  status         ApiStatus @default(ACTIVE)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  microservice Microservice @relation(fields: [microserviceId], references: [id], onDelete: Cascade)
+  endpoints    ApiEndpoint[]
+
+  @@unique([microserviceId, version])
+  @@schema("super_admin")
+}
+
+model ApiEndpoint {
+  id                     String    @id @default(uuid())
+  apiVersionId           String
+  name                   String    @default("Default Endpoint") // e.g. "Generate Image"
+  path                   String // e.g. "/generate"
+  backendPath            String? // e.g. "/inference/generate-image"
+  method                 HttpMethod
+  status                 ApiStatus @default(ACTIVE)
+  visibility             String    @default("PUBLIC") // "PUBLIC", "PRIVATE", "INTERNAL"
+  authenticationRequired Boolean   @default(true)
+  timeoutMs              Int       @default(30000)
+  rateLimit              Int? // requests per minute
+  payloadLimit           Int? // in bytes
+  isDeprecated           Boolean   @default(false)
+  documentationUrl       String?   @db.Text
+  
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  apiVersion ApiVersion @relation(fields: [apiVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([apiVersionId, method, path])
+  @@schema("super_admin")
+}
+
+model MicroserviceEnvironment {
+  id                    String      @id @default(uuid())
+  microserviceId        String
+  environment           Environment
+  targetUrl             String // The internal microservice URL to proxy to for this env
+  healthEndpoint        String?
+  status                ApiStatus   @default(ACTIVE)
+  maintenanceMessage    String?     @db.Text
+  timeoutMs             Int         @default(30000)
+  retries               Int         @default(0)
+  maxPayloadSize        Int         @default(1048576) // Default 1MB
+  maxConcurrentRequests Int         @default(100)
+  config                Json? // Other dynamic environment-specific configuration
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  microservice Microservice @relation(fields: [microserviceId], references: [id], onDelete: Cascade)
+
+  @@unique([microserviceId, environment])
+  @@schema("super_admin")
+}
+
+// -----------------------------------------------------------------------------
+// ACCESS CONTROL
+// -----------------------------------------------------------------------------
+
+// Controls which client has access to which microservice
+model ClientAccess {
+  id             String    @id @default(uuid())
+  clientId       String
+  microserviceId String
+  enabled        Boolean   @default(true)
+  rateLimit      Int? // requests per day
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  expiresAt      DateTime?
+
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  microservice Microservice @relation(fields: [microserviceId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, microserviceId])
+  @@index([clientId])
+  @@index([microserviceId])
+  @@schema("super_admin")
+}
+
+// -----------------------------------------------------------------------------
+// OBSERVABILITY & LOGGING
+// -----------------------------------------------------------------------------
+
+model RequestLog {
+  id               String      @id @default(uuid())
+  requestId        String      @unique // Correlation ID
+  clientId         String?
+  microserviceId   String?
+  environment      Environment
+  gatewayInstance  String?
+  endpoint         String
+  method           HttpMethod
+  status           LogStatus   @default(COMPLETED)
+  statusCode       Int?
+  totalLatencyMs   Int?
+  gatewayLatencyMs Int?
+  backendLatencyMs Int?
+  errorMessage     String?     @db.Text
+  ipAddress        String?
+  userAgent        String?     @db.Text
+  headers          Json?
+  queryParams      Json?
+  requestSize      Int? // bytes
+  responseSize     Int? // bytes
+  timestamp        DateTime    @default(now())
+
+  client       Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  microservice Microservice? @relation(fields: [microserviceId], references: [id], onDelete: SetNull)
+
+  // Critical composite indexes for scale
+  @@index([clientId, timestamp])
+  @@index([microserviceId, timestamp])
+  @@index([statusCode])
+  @@index([endpoint])
+  @@index([timestamp])
+  @@schema("super_admin")
+}
+
+model HealthCheck {
+  id              String          @id @default(uuid())
+  microserviceId  String
+  environment     Environment
+  status          ApiStatus
+  statusCode      Int?
+  responseTime    Int? // latency in ms
+  durationMs      Int? // total execution time in ms
+  errorMessage    String?         @db.Text
+  checkerType     HealthCheckType
+  checkedByUserId String? // ID of admin if MANUAL
+  checkedAt       DateTime        @default(now())
+
+  microservice  Microservice @relation(fields: [microserviceId], references: [id], onDelete: Cascade)
+  checkedByUser AdminUser?   @relation("HealthCheckCheckedBy", fields: [checkedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([microserviceId, checkedAt])
+  @@schema("super_admin")
+}
+
+model AuditLog {
+  id        String      @id @default(uuid())
+  userId    String?
+  action    AuditAction
+  entity    AuditEntity
+  entityId  String
+  oldValue  Json?
+  newValue  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime    @default(now())
+
+  adminUser AdminUser? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@schema("super_admin")
+}
+
+model SystemSetting {
+  id              String   @id @default(uuid())
+  key             String   @unique
+  description     String?
+  value           Json
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  updatedByUser AdminUser? @relation("SystemSettingUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@schema("super_admin")
+}
