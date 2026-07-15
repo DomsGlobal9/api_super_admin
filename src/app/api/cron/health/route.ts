@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { redis } from '@/lib/redis';
-import { MicroserviceStatus } from '@prisma/client';
+import { ApiStatus } from '@prisma/client';
 
 /**
  * Triggered by Vercel Cron every 30/60 seconds.
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
         }
 
         const durationMs = Date.now() - startTime;
-        const newStatus = isHealthy ? MicroserviceStatus.ACTIVE : MicroserviceStatus.DOWN;
+        const newStatus = isHealthy ? ApiStatus.ACTIVE : ApiStatus.DISABLED;
 
         await prisma.healthCheck.create({
           data: {
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
           },
         });
 
-        if (env.status !== newStatus && env.status !== 'MAINTENANCE') {
+        if (env.status !== newStatus && env.status !== ApiStatus.DISABLED) {
           await prisma.microserviceEnvironment.update({
             where: { id: env.id },
             data: { status: newStatus },

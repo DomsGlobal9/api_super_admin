@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       })
     ]);
 
-    const mapped = logs.map(log => ({
+    const mapped = logs.map((log: any) => ({
       id: log.id,
       action: log.action,
       actor: log.adminUser?.email || log.adminUser?.name || 'System',

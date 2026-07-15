@@ -1,7 +1,7 @@
 import { prisma } from '../prisma';
 import { redis } from '../redis';
 import { GatewayError } from './errors';
-import { Environment, Microservice, MicroserviceEnvironment } from '@prisma/client';
+import { Environment, Microservice, MicroserviceEnvironment, ApiStatus } from '@prisma/client';
 import { config } from '../config';
 import { EnvironmentConfigSchema } from '../validation/microservice';
 
@@ -21,13 +21,10 @@ export async function resolveRoute(
   try {
     const cachedData = await redis.get<ResolvedRoute>(redisCacheKey);
     if (cachedData) {
-      if (cachedData.environment.status === 'DOWN') {
-        throw new GatewayError('SERVICE_UNAVAILABLE', 'Microservice is down', 503);
-      }
-      if (cachedData.environment.status === 'MAINTENANCE') {
+      if (cachedData.environment.status === ApiStatus.DISABLED) {
         throw new GatewayError(
           'SERVICE_UNAVAILABLE',
-          cachedData.environment.maintenanceMessage || 'Microservice is under maintenance',
+          cachedData.environment.maintenanceMessage || 'Microservice is under maintenance or disabled',
           503
         );
       }
@@ -86,13 +83,10 @@ export async function resolveRoute(
     console.warn(`[Redis] Failed to cache route:`, err);
   }
 
-  if (environment.status === 'DOWN') {
-    throw new GatewayError('SERVICE_UNAVAILABLE', 'Microservice is down', 503);
-  }
-  if (environment.status === 'MAINTENANCE') {
+  if (environment.status === ApiStatus.DISABLED) {
     throw new GatewayError(
       'SERVICE_UNAVAILABLE',
-      environment.maintenanceMessage || 'Microservice is under maintenance',
+      environment.maintenanceMessage || 'Microservice is under maintenance or disabled',
       503
     );
   }
