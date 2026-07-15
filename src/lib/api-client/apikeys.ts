@@ -8,4 +8,5 @@ export const apikeysClient = {
   rotate: (id: string) => baseClient.post<any>(`/api-keys/${id}/rotate`),
   revoke: (id: string) => baseClient.post<any>(`/api-keys/${id}/revoke`),
   delete: (id: string) => baseClient.delete<any>(`/api-keys/${id}`),
+  getAuditLogs: (id: string) => baseClient.get<any>(`/api-keys/${id}/audit`),
 };

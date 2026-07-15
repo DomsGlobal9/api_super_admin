@@ -51,14 +51,28 @@ export class ApiKeyRepository extends BaseRepository<any> {
 
   async create(data: CreateApiKeyDTO & { keyHash: string }, adminUserId: string) {
     const { keyHash, ...rest } = data;
-    return this.db.apiKey.create({
-      data: {
-        ...rest,
-        keyHash,
-        createdById: adminUserId,
-        updatedById: adminUserId,
-      },
-      include: { client: true },
+    
+    return this.db.$transaction(async (tx) => {
+      const apiKey = await tx.apiKey.create({
+        data: {
+          ...rest,
+          keyHash,
+          createdById: adminUserId,
+          updatedById: adminUserId,
+        },
+        include: { client: true },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: 'API_KEY_CREATED',
+          entity: 'API_KEY',
+          entityId: apiKey.id,
+          userId: adminUserId,
+        }
+      });
+
+      return apiKey;
     });
   }
 
@@ -74,24 +88,50 @@ export class ApiKeyRepository extends BaseRepository<any> {
   }
 
   async softDelete(id: string, adminUserId: string) {
-    return this.db.apiKey.update({
-      where: { id },
-      data: {
-        status: 'REVOKED',
-        deletedAt: this.currentTimestamp,
-        deletedById: adminUserId,
-      },
+    return this.db.$transaction(async (tx) => {
+      const apiKey = await tx.apiKey.update({
+        where: { id },
+        data: {
+          status: 'REVOKED',
+          deletedAt: this.currentTimestamp,
+          deletedById: adminUserId,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: 'API_KEY_REVOKED',
+          entity: 'API_KEY',
+          entityId: id,
+          userId: adminUserId,
+        }
+      });
+
+      return apiKey;
     });
   }
 
   async rotate(id: string, newKeyHash: string, adminUserId: string) {
-    return this.db.apiKey.update({
-      where: { id },
-      data: {
-        keyHash: newKeyHash,
-        updatedById: adminUserId,
-      },
-      include: { client: true },
+    return this.db.$transaction(async (tx) => {
+      const apiKey = await tx.apiKey.update({
+        where: { id },
+        data: {
+          keyHash: newKeyHash,
+          updatedById: adminUserId,
+        },
+        include: { client: true },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: 'API_KEY_ROTATED',
+          entity: 'API_KEY',
+          entityId: id,
+          userId: adminUserId,
+        }
+      });
+
+      return apiKey;
     });
   }
 }

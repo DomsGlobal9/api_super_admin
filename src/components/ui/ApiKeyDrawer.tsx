@@ -1,8 +1,8 @@
-import { X, ShieldAlert, KeyRound, RotateCcw, AlertCircle } from 'lucide-react';
+import { X, ShieldAlert, KeyRound, RotateCcw, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from './StatusBadge';
 import { apikeysClient } from '@/lib/api-client/apikeys';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ApiKeyDrawerProps {
   isOpen: boolean;
@@ -16,6 +16,18 @@ export function ApiKeyDrawer({ isOpen, onClose, apiKey, onUpdate }: ApiKeyDrawer
   const [error, setError] = useState('');
   const [rotatedKey, setRotatedKey] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('Details & Permissions');
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && apiKey?.id && (activeTab === 'Audit History' || activeTab === 'Rotation History')) {
+      setLoadingLogs(true);
+      apikeysClient.getAuditLogs(apiKey.id)
+        .then(data => setAuditLogs(data))
+        .catch(err => console.error("Failed to load audit logs", err))
+        .finally(() => setLoadingLogs(false));
+    }
+  }, [isOpen, apiKey?.id, activeTab]);
 
   if (!isOpen || !apiKey) return null;
 
@@ -166,9 +178,39 @@ export function ApiKeyDrawer({ isOpen, onClose, apiKey, onUpdate }: ApiKeyDrawer
             {activeTab === 'Audit History' && (
               <div>
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Audit Logs</h3>
-                <div className="text-center py-8 text-gray-500 text-sm bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800">
-                  No audit logs available for this key.
-                </div>
+                {loadingLogs ? (
+                  <div className="text-center py-8 text-gray-500 text-sm">Loading logs...</div>
+                ) : auditLogs.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 text-sm bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800">
+                    No audit logs available for this key.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {auditLogs.map((log) => (
+                      <div key={log.id} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md border border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full">
+                            {log.action === 'API_KEY_REVOKED' ? <ShieldAlert className="w-4 h-4" /> : 
+                             log.action === 'API_KEY_ROTATED' ? <RotateCcw className="w-4 h-4" /> : 
+                             <KeyRound className="w-4 h-4" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {log.action.replace(/_/g, ' ')}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              By: {log.adminUser?.name || log.adminUser?.email || 'Unknown User'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {new Date(log.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -176,9 +218,37 @@ export function ApiKeyDrawer({ isOpen, onClose, apiKey, onUpdate }: ApiKeyDrawer
             {activeTab === 'Rotation History' && (
               <div>
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Rotation History</h3>
-                <div className="text-center py-8 text-gray-500 text-sm bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800">
-                  This key has never been rotated.
-                </div>
+                {loadingLogs ? (
+                  <div className="text-center py-8 text-gray-500 text-sm">Loading logs...</div>
+                ) : auditLogs.filter(l => l.action === 'API_KEY_ROTATED').length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 text-sm bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-800">
+                    This key has never been rotated.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {auditLogs.filter(l => l.action === 'API_KEY_ROTATED').map((log) => (
+                      <div key={log.id} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md border border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
+                            <RotateCcw className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              KEY ROTATED
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              By: {log.adminUser?.name || log.adminUser?.email || 'Unknown User'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {new Date(log.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

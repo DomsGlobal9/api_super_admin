@@ -43,6 +43,7 @@ export class PostgresLogger implements ILogger {
         data: {
           requestId: event.requestId,
           clientId: isUnknownClient ? null : event.clientId,
+          apiKeyId: event.apiKeyId,
           microserviceId: isUnknownMicroservice ? null : event.microserviceId,
           environment: event.environment,
           endpoint: event.endpoint,
@@ -95,6 +96,7 @@ export class PostgresLogger implements ILogger {
         create: {
           requestId: event.requestId,
           clientId: isUnknownClient ? null : event.clientId,
+          apiKeyId: event.apiKeyId,
           microserviceId: isUnknownMicroservice ? null : event.microserviceId,
           environment: event.environment,
           gatewayInstance: event.gatewayInstance,
@@ -136,6 +138,7 @@ export class PostgresLogger implements ILogger {
         create: {
           requestId: event.requestId,
           clientId: isUnknownClient ? null : event.clientId,
+          apiKeyId: event.apiKeyId,
           microserviceId: isUnknownMicroservice ? null : event.microserviceId,
           environment: event.environment,
           endpoint: event.endpoint,
@@ -170,6 +173,7 @@ export class PostgresLogger implements ILogger {
         create: {
           requestId: event.requestId,
           clientId: isUnknownClient ? null : event.clientId,
+          apiKeyId: event.apiKeyId,
           microserviceId: isUnknownMicroservice ? null : event.microserviceId,
           environment: event.environment,
           endpoint: event.endpoint,

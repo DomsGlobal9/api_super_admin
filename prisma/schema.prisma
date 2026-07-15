@@ -105,6 +105,7 @@ enum AuditAction {
   CLIENT_SUSPENDED
   API_KEY_CREATED
   API_KEY_REVOKED
+  API_KEY_ROTATED
   MICROSERVICE_CREATED
   MICROSERVICE_UPDATED
   API_ENDPOINT_CREATED
@@ -293,6 +294,7 @@ model ApiKey {
 
   allowedModules       ApiKeyModuleAccess[]
   allowedMicroservices ApiKeyMicroserviceAccess[]
+  requestLogs          RequestLog[]
 
   @@index([clientId])
   @@schema("super_admin")
@@ -510,6 +512,7 @@ model RequestLog {
   id               String      @id @default(uuid())
   requestId        String      @unique // Correlation ID
   clientId         String?
+  apiKeyId         String?
   microserviceId   String?
   environment      Environment
   gatewayInstance  String?
@@ -530,10 +533,12 @@ model RequestLog {
   timestamp        DateTime    @default(now())
 
   client       Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  apiKey       ApiKey?       @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
   microservice Microservice? @relation(fields: [microserviceId], references: [id], onDelete: SetNull)
 
   // Critical composite indexes for scale
   @@index([clientId, timestamp])
+  @@index([apiKeyId, timestamp])
   @@index([microserviceId, timestamp])
   @@index([statusCode])
   @@index([endpoint])

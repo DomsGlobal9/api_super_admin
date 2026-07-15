@@ -13,6 +13,7 @@ export default function ApiEndpointsPage() {
   const apiId = params.id as string;
   
   const [versions, setVersions] = useState<any[]>([]);
+  const [api, setApi] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -25,8 +26,12 @@ export default function ApiEndpointsPage() {
   const loadEndpoints = async () => {
     try {
       setLoading(true);
-      const data = await apisClient.getEndpoints(apiId);
-      setVersions(data || []);
+      const [versionsData, overviewData] = await Promise.all([
+        apisClient.getEndpoints(apiId),
+        apisClient.getOverview(apiId)
+      ]);
+      setVersions(versionsData || []);
+      setApi(overviewData?.api || null);
     } catch (err: any) {
       setError(err.message || 'Failed to load endpoints');
     } finally {
@@ -75,17 +80,24 @@ export default function ApiEndpointsPage() {
                   className="flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer"
                   onClick={() => setSelectedEndpoint(ep)}
                 >
-                  <div className="flex items-center gap-4">
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono w-16 text-center ${
-                      ep.method === 'GET' ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" :
-                      ep.method === 'POST' ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" :
-                      ep.method === 'DELETE' ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" :
-                      "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
-                    }`}>
-                      {ep.method}
-                    </span>
-                    <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">{ep.path}</span>
-                    <span className="text-sm text-gray-500">{ep.name}</span>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-4">
+                      <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono w-16 text-center ${
+                        ep.method === 'GET' ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" :
+                        ep.method === 'POST' ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" :
+                        ep.method === 'DELETE' ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" :
+                        "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
+                      }`}>
+                        {ep.method}
+                      </span>
+                      <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">{ep.path}</span>
+                      <span className="text-sm text-gray-500">{ep.name}</span>
+                    </div>
+                    {api?.slug && (
+                      <div className="flex items-center text-xs text-gray-400 dark:text-gray-500 ml-[80px]">
+                        <span className="font-mono">https://api.scaleeasy.com/gateway/{v.version}/{api.slug}{ep.path}</span>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex items-center gap-8 text-sm text-gray-500 dark:text-gray-400">

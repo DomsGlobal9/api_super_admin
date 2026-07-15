@@ -4,29 +4,33 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Blocks, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { modulesClient } from '@/lib/api-client/modules';
+import { CreateModuleDialog } from '@/components/ui/CreateModuleDialog';
 
 // Using a simplified view for the Modules index since it's typically a very small list (TryOn, Inventory, etc.)
 export default function ModulesPage() {
   const [modules, setModules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const loadModules = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await modulesClient.list({ pageSize: 100 });
+      const modsArray = Array.isArray(res) ? res : [];
+      setModules(modsArray);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load modules');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function loadModules() {
-      try {
-        const res = await modulesClient.list({ pageSize: 100 });
-        const modsArray = Array.isArray(res) ? res : [];
-        setModules(modsArray);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load modules');
-      } finally {
-        setLoading(false);
-      }
-    }
     loadModules();
-  }, []);
+  }, [loadModules]);
 
   return (
     <div className="space-y-6">
@@ -34,7 +38,10 @@ export default function ModulesPage() {
         title="Business Modules"
         description="High-level product modules that bundle APIs together for client subscriptions."
         actions={
-          <button className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 bg-indigo-600 text-white hover:bg-indigo-700 h-10 px-4 py-2">
+          <button 
+            onClick={() => setIsCreateOpen(true)}
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 bg-indigo-600 text-white hover:bg-indigo-700 h-10 px-4 py-2"
+          >
             <Plus className="mr-2 h-4 w-4" />
             Create Module
           </button>
@@ -67,6 +74,12 @@ export default function ModulesPage() {
           </Link>
         ))}
       </div>
+      
+      <CreateModuleDialog 
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSuccess={() => loadModules()}
+      />
     </div>
   );
 }

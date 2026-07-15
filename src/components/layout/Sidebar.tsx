@@ -69,21 +69,32 @@ const navigationGroups = [
   }
 ];
 
-function NavItem({ item, pathname }: { item: any; pathname: string }) {
+function NavItem({ 
+  item, 
+  pathname, 
+  expandedItem, 
+  setExpandedItem 
+}: { 
+  item: any; 
+  pathname: string; 
+  expandedItem: string | null;
+  setExpandedItem: (name: string | null) => void;
+}) {
   const hasSubItems = item.subItems && item.subItems.length > 0;
   
   // Check if any sub-item is active
   const isAnySubItemActive = hasSubItems && item.subItems.some((sub: any) => pathname === sub.href || pathname.startsWith(`${sub.href}/`));
   const isDirectlyActive = !hasSubItems && (pathname === item.href || pathname.startsWith(`${item.href}/`));
   
-  const [isOpen, setIsOpen] = useState(isAnySubItemActive);
+  const isOpen = expandedItem === item.name;
 
-  // Keep expanded if route changes to a child
-  useEffect(() => {
-    if (isAnySubItemActive) {
-      setIsOpen(true);
+  const handleToggle = () => {
+    if (isOpen) {
+      setExpandedItem(null);
+    } else {
+      setExpandedItem(item.name);
     }
-  }, [pathname, isAnySubItemActive]);
+  };
 
   if (!hasSubItems) {
     return (
@@ -115,7 +126,7 @@ function NavItem({ item, pathname }: { item: any; pathname: string }) {
   return (
     <div className="space-y-1">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className={cn(
           'group flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
           isAnySubItemActive && !isOpen
@@ -135,40 +146,74 @@ function NavItem({ item, pathname }: { item: any; pathname: string }) {
           />
           {item.name}
         </div>
-        {isOpen ? (
-          <ChevronDown className="h-4 w-4 text-gray-400" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-gray-400" />
-        )}
+          <ChevronRight 
+            className={cn(
+              "h-4 w-4 transition-transform duration-300 ease-in-out",
+              isOpen ? "rotate-90 text-indigo-500 dark:text-indigo-400" : "text-gray-400"
+            )} 
+          />
       </button>
 
-      {isOpen && (
-        <div className="pl-10 space-y-1 mt-1">
-          {item.subItems.map((sub: any) => {
-            const isSubActive = pathname === sub.href || pathname.startsWith(`${sub.href}/`);
-            return (
-              <Link
-                key={sub.name}
-                href={sub.href}
-                className={cn(
-                  'block rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  isSubActive
-                    ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-900 dark:hover:text-gray-50'
-                )}
-              >
-                {sub.name}
-              </Link>
-            );
-          })}
+      <div 
+        className={cn(
+          "grid transition-all duration-300 ease-in-out",
+          isOpen ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="relative pl-4 ml-5 space-y-1 border-l-2 border-gray-100 dark:border-gray-800 py-1">
+            {item.subItems.map((sub: any) => {
+              const isSubActive = pathname === sub.href || pathname.startsWith(`${sub.href}/`);
+              return (
+                <div key={sub.name} className="relative group/sub">
+                  {/* Glowing Indicator Dot for Active State */}
+                  {isSubActive && (
+                    <div className="absolute -left-[21px] top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 shadow-[0_0_8px_rgba(79,70,229,0.8)] dark:shadow-[0_0_8px_rgba(129,140,248,0.8)] ring-4 ring-white dark:ring-gray-950 z-10" />
+                  )}
+                  {/* Hover indicator dot */}
+                  {!isSubActive && (
+                    <div className="absolute -left-[19px] top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700 opacity-0 group-hover/sub:opacity-100 transition-opacity duration-200 z-10" />
+                  )}
+                  
+                  <Link
+                    href={sub.href}
+                    className={cn(
+                      'block rounded-md px-3 py-2 text-sm font-medium transition-all duration-200',
+                      isSubActive
+                        ? 'text-indigo-700 bg-indigo-50/80 dark:text-indigo-300 dark:bg-indigo-500/10 translate-x-1'
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-900/50 hover:translate-x-1'
+                    )}
+                  >
+                    {sub.name}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+
+  // Initialize expanded item based on current pathname
+  useEffect(() => {
+    for (const group of navigationGroups) {
+      for (const item of group.items) {
+        if ('subItems' in item && item.subItems) {
+          const isActive = item.subItems.some((sub: any) => pathname === sub.href || pathname.startsWith(`${sub.href}/`));
+          if (isActive) {
+            setExpandedItem(item.name);
+            return;
+          }
+        }
+      }
+    }
+  }, [pathname]);
 
   return (
     <div className="flex h-full w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 shadow-sm">
@@ -187,7 +232,13 @@ export function Sidebar() {
               )}
               <div className="space-y-1">
                 {group.items.map((item) => (
-                  <NavItem key={item.name} item={item} pathname={pathname} />
+                  <NavItem 
+                    key={item.name} 
+                    item={item} 
+                    pathname={pathname} 
+                    expandedItem={expandedItem}
+                    setExpandedItem={setExpandedItem}
+                  />
                 ))}
               </div>
             </div>
