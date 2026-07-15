@@ -23,36 +23,65 @@ export default function ClientUsagePage({ params }: { params: Promise<{ id: stri
   });
 
   useEffect(() => {
-    async function loadInitial() {
+    let isMounted = true;
+    
+    async function loadInitial(showLoader = true) {
       try {
+        if (showLoader) setLoading(true);
         const [usageData, overviewData] = await Promise.all([
           clientsApi.getUsage(id),
           clientsApi.getOverview(id)
         ]);
-        setUsage(usageData);
-        setApiKeys(overviewData?.apiKeys || []);
+        if (isMounted) {
+          setUsage(usageData);
+          setApiKeys(overviewData?.apiKeys || []);
+        }
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        if (isMounted && showLoader) setLoading(false);
       }
     }
-    loadInitial();
+    
+    loadInitial(true);
+    
+    // Auto-refresh stats every 3 seconds seamlessly
+    const intervalId = setInterval(() => {
+      loadInitial(false);
+    }, 3000);
+    
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, [id]);
 
   useEffect(() => {
-    async function loadLogs() {
+    let isMounted = true;
+    
+    async function loadLogs(showLoader = true) {
       try {
-        setLogsLoading(true);
+        if (showLoader) setLogsLoading(true);
         const logsData = await clientsApi.getRequests(id, { pageSize: 10, ...filters });
-        setLogs(logsData);
+        if (isMounted) setLogs(logsData);
       } catch (err) {
         console.error(err);
       } finally {
-        setLogsLoading(false);
+        if (isMounted && showLoader) setLogsLoading(false);
       }
     }
-    loadLogs();
+    
+    loadLogs(true);
+    
+    // Auto-refresh table every 3 seconds seamlessly
+    const intervalId = setInterval(() => {
+      loadLogs(false);
+    }, 3000);
+    
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, [id, filters]);
 
   if (loading) {

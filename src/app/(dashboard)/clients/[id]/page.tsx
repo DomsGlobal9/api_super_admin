@@ -12,17 +12,31 @@ export default function ClientOverviewPage({ params }: { params: Promise<{ id: s
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
+    let isMounted = true;
+    
+    async function load(showLoader = true) {
       try {
+        if (showLoader) setLoading(true);
         const res = await clientsApi.getOverview(id);
-        setData(res);
+        if (isMounted) setData(res);
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        if (isMounted && showLoader) setLoading(false);
       }
     }
-    load();
+    
+    load(true);
+    
+    // Auto-refresh overview stats every 3 seconds seamlessly
+    const intervalId = setInterval(() => {
+      load(false);
+    }, 3000);
+    
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, [id]);
 
   if (loading) {
