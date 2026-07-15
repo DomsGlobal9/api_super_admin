@@ -11,6 +11,8 @@ import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { checkCircuitBreaker, recordCircuitSuccess, recordCircuitFailure } from '@/lib/resiliency/circuit-breaker';
 import { enterConcurrencyLimit, releaseConcurrencyLimit } from '@/lib/resiliency/concurrency';
 
+export const maxDuration = 60; // 60 seconds (requires Vercel Pro, defaults to 10s on Hobby)
+
 export async function ANY(
   req: NextRequest,
   { params }: { params: Promise<{ environment: string; microserviceSlug: string; path: string[] }> }

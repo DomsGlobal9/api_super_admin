@@ -17,7 +17,7 @@ async function main() {
   });
   
   console.log('Clients and their request log counts:');
-  console.table(clients.map(c => ({
+  console.table(clients.map((c: any) => ({
     company: c.companyName,
     logCount: c._count.requestLogs
   })));
@@ -34,7 +34,7 @@ async function main() {
   });
   
   console.log('\nAPI Keys and their request counts:');
-  console.table(apiKeys.map(k => ({
+  console.table(apiKeys.map((k: any) => ({
     company: k.client.companyName,
     keyName: k.name,
     requestCount: k.requestCount,
