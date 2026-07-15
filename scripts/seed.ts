@@ -1,4 +1,3 @@
-import { Environment } from '@prisma/client';
 import { createHash } from 'crypto';
 import { prisma } from '../src/lib/prisma';
 
@@ -51,7 +50,7 @@ async function main() {
     where: {
       microserviceId_environment: {
         microserviceId: microservice.id,
-        environment: Environment.PRODUCTION,
+        environment: 'PRODUCTION',
       },
     },
     update: {
@@ -64,7 +63,7 @@ async function main() {
     },
     create: {
       microserviceId: microservice.id,
-      environment: Environment.PRODUCTION,
+      environment: 'PRODUCTION',
       targetUrl: 'http://localhost:4000',
       healthEndpoint: '/api/v1/health',
       timeoutMs: 130000,
@@ -73,7 +72,7 @@ async function main() {
       maxConcurrentRequests: 1000,
     },
   });
-  console.log(`✅ Environment created for ${Environment.PRODUCTION}`);
+  console.log(`✅ Environment created for PRODUCTION`);
 
   // 5. Create ClientAccess
   const access = await prisma.clientAccess.upsert({
@@ -110,7 +109,7 @@ async function main() {
       keyHash: hashedKey,
       name: 'Test Alpha Key',
       status: 'ACTIVE',
-      environment: Environment.PRODUCTION,
+      environment: 'PRODUCTION',
     },
   });
   console.log(`✅ API Key created. Use header: x-api-key: ${rawKey}`);
