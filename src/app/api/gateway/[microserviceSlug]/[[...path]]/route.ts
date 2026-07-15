@@ -120,6 +120,12 @@ export async function ANY(
     finalHeaders.set('X-Request-ID', requestId);
     finalHeaders.set('X-Gateway-Version', process.env.npm_package_version || '0.1.0'); 
     finalHeaders.set('X-Response-Time', `${Date.now() - startTime}ms`);
+    
+    // Inject CORS headers
+    const origin = req.headers.get('origin') || '*';
+    finalHeaders.set('Access-Control-Allow-Origin', origin);
+    finalHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    finalHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
 
     // We use a new response object to attach our custom headers
     const finalResponse = new Response(response.body, {
@@ -177,7 +183,15 @@ export async function ANY(
       errorMessage: error.message,
     }).catch(console.error);
 
-    return createErrorResponse(error, requestId);
+    const errorResponse = createErrorResponse(error, requestId);
+    
+    // Inject CORS headers on error response
+    const origin = req.headers.get('origin') || '*';
+    errorResponse.headers.set('Access-Control-Allow-Origin', origin);
+    errorResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    errorResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+    
+    return errorResponse;
   } finally {
     // 10. Always release concurrency token if we acquired it
     if (enteredConcurrency) {
@@ -194,5 +208,17 @@ export const POST = ANY;
 export const PUT = ANY;
 export const PATCH = ANY;
 export const DELETE = ANY;
-export const OPTIONS = ANY;
 export const HEAD = ANY;
+
+export async function OPTIONS(req: NextRequest) {
+  const origin = req.headers.get('origin') || '*';
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key',
+      'Access-Control-Max-Age': '86400',
+    },
+  });
+}

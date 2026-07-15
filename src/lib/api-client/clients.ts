@@ -6,7 +6,7 @@ export const clientsApi = {
   create: (data: any) => baseClient.post<any>('/clients', data),
   update: (id: string, data: any) => baseClient.patch<any>(`/clients/${id}`, data),
   assignApi: (id: string, apiId: string) => baseClient.post<any>(`/clients/${id}/apis`, { apiId }),
-  getUsage: (id: string) => baseClient.get<any>(`/clients/${id}/usage`),
+  getUsage: (id: string, params?: Record<string, any>) => baseClient.get<any>(`/clients/${id}/usage`, params),
   getRequests: (id: string, params?: Record<string, any>) => baseClient.get<any>(`/clients/${id}/requests`, params),
   getAuditLogs: (id: string) => baseClient.get<any>(`/clients/${id}/audit`),
 };

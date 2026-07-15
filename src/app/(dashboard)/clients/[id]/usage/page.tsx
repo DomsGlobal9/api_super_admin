@@ -29,7 +29,7 @@ export default function ClientUsagePage({ params }: { params: Promise<{ id: stri
       try {
         if (showLoader) setLoading(true);
         const [usageData, overviewData] = await Promise.all([
-          clientsApi.getUsage(id),
+          clientsApi.getUsage(id, filters),
           clientsApi.getOverview(id)
         ]);
         if (isMounted) {
@@ -54,7 +54,7 @@ export default function ClientUsagePage({ params }: { params: Promise<{ id: stri
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, [id]);
+  }, [id, filters]);
 
   useEffect(() => {
     let isMounted = true;
@@ -104,12 +104,16 @@ export default function ClientUsagePage({ params }: { params: Promise<{ id: stri
     ? ((usage.success / usage.totalRequests) * 100).toFixed(1) 
     : "100.0";
 
+  const timeTitle = filters.days 
+    ? `(Last ${filters.days === '1' ? '24 Hours' : filters.days + ' Days'})` 
+    : '(All Time)';
+
   return (
     <div className="space-y-8">
       {/* Top Metrics */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Requests (All Time)"
+          title={`Total Requests ${timeTitle}`}
           value={usage.totalRequests.toLocaleString()}
           icon={Activity}
           trend={{ value: usage.thisMonth, isPositive: true }}

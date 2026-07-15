@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { ok, unauthorized, notFound, serverError } from '@/lib/api/response';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/authOptions';
@@ -19,6 +20,40 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    const statusFilter = req.nextUrl.searchParams.get('status');
+    const daysFilter = req.nextUrl.searchParams.get('days');
+    const endpointFilter = req.nextUrl.searchParams.get('endpoint');
+    const apiKeyIdFilter = req.nextUrl.searchParams.get('apiKeyId');
+
+    const conditions: Prisma.Sql[] = [Prisma.sql`"clientId" = ${id}`];
+
+    if (apiKeyIdFilter) {
+      conditions.push(Prisma.sql`"apiKeyId" = ${apiKeyIdFilter}`);
+    }
+
+    if (endpointFilter) {
+      conditions.push(Prisma.sql`"endpoint" ILIKE ${'%' + endpointFilter + '%'}`);
+    }
+
+    if (daysFilter) {
+      const days = parseInt(daysFilter, 10);
+      if (!isNaN(days) && days > 0) {
+        const date = new Date();
+        date.setDate(date.getDate() - days);
+        conditions.push(Prisma.sql`"timestamp" >= ${date}`);
+      }
+    }
+
+    if (statusFilter === 'success') {
+      conditions.push(Prisma.sql`"statusCode" >= 200 AND "statusCode" < 400`);
+    } else if (statusFilter === 'client_error') {
+      conditions.push(Prisma.sql`"statusCode" >= 400 AND "statusCode" < 500`);
+    } else if (statusFilter === 'server_error') {
+      conditions.push(Prisma.sql`"statusCode" >= 500`);
+    }
+
+    const whereClause = Prisma.join(conditions, ' AND ');
+
     // Using raw SQL for efficient aggregations on high-volume RequestLog
     const usageQuery = await prisma.$queryRaw`
       SELECT 
@@ -29,7 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         SUM(CASE WHEN "timestamp" >= ${todayStart} THEN 1 ELSE 0 END)::int as "today",
         SUM(CASE WHEN "timestamp" >= ${monthStart} THEN 1 ELSE 0 END)::int as "thisMonth"
       FROM super_admin."RequestLog"
-      WHERE "clientId" = ${id}
+      WHERE ${whereClause}
     `;
 
     const stats = (usageQuery as any[])[0] || {
