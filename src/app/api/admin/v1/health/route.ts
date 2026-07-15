@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const { prisma } = await import('@/lib/prisma');
     
     // For each API, calculate real metrics from RequestLog
-    const healthStatus = await Promise.all(apis.apis.map(async (api) => {
+    const healthStatus = await Promise.all(apis.apis.map(async (api: any) => {
       // Get today's logs for this API
       const today = new Date(new Date().setHours(0, 0, 0, 0));
       
