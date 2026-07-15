@@ -49,14 +49,15 @@ export class ApiKeyRepository extends BaseRepository<any> {
     });
   }
 
-  async create(data: CreateApiKeyDTO & { keyHash: string }, adminUserId: string) {
-    const { keyHash, ...rest } = data;
+  async create(data: CreateApiKeyDTO & { keyHash: string; rawKey?: string }, adminUserId: string) {
+    const { keyHash, rawKey, ...rest } = data;
     
     return this.db.$transaction(async (tx) => {
       const apiKey = await tx.apiKey.create({
         data: {
           ...rest,
           keyHash,
+          rawKey,
           createdById: adminUserId,
           updatedById: adminUserId,
         },

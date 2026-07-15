@@ -269,6 +269,7 @@ model ApiKey {
   clientId       String
   name           String // e.g., "Shopify Production"
   keyHash        String             @unique
+  rawKey         String? // Optional raw key for display purposes
   status         ApiKeyStatus       @default(ACTIVE)
   type           ApiKeyType         @default(PRODUCTION)
   permissions    ApiKeyPermission[] // Array of enums for scopes
@@ -463,6 +464,7 @@ model MicroserviceEnvironment {
   microserviceId        String
   environment           Environment
   targetUrl             String // The internal microservice URL to proxy to for this env
+  internalSecret        String? // The master key or secret to inject when proxying
   healthEndpoint        String?
   status                ApiStatus   @default(ACTIVE)
   maintenanceMessage    String?     @db.Text

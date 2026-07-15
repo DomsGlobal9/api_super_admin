@@ -10,6 +10,7 @@ export interface ApiDTO {
   activeVersions?: number;
   totalEndpoints?: number;
   requestsToday?: number;
+  environments?: any[];
 }
 
 export interface ApiOverviewDTO {

@@ -15,7 +15,7 @@ export const maxDuration = 60; // 60 seconds (requires Vercel Pro, defaults to 1
 
 export async function ANY(
   req: NextRequest,
-  { params }: { params: Promise<{ environment: string; microserviceSlug: string; path: string[] }> }
+  { params }: { params: Promise<{ microserviceSlug: string; path?: string[] }> }
 ) {
   const unwrappedParams = await params;
   const requestId = crypto.randomUUID();
@@ -40,7 +40,7 @@ export async function ANY(
     console.log(`[Gateway] API key authenticated (Client: ${validatedKey.client.companyName})`);
 
     // 3. Resolve Environment & Microservice (Routing)
-    const route = await resolveRoute(unwrappedParams.microserviceSlug, unwrappedParams.environment);
+    const route = await resolveRoute(unwrappedParams.microserviceSlug, 'PRODUCTION');
     resolvedMicroservice = route.microservice.id;
 
     // 4. Authorization
@@ -60,7 +60,8 @@ export async function ANY(
     await enterConcurrencyLimit(route.microservice.slug, route.environment.maxConcurrentRequests);
     enteredConcurrency = true;
 
-    const pathString = unwrappedParams.path.join('/');
+    const pathArray = unwrappedParams.path || [];
+    const pathString = pathArray.join('/');
     
     const methodEnum = (req.method.toUpperCase() as HttpMethod) || HttpMethod.GET;
     
@@ -68,6 +69,7 @@ export async function ANY(
     logger.logStarted({
       requestId,
       clientId: resolvedClient,
+      apiKeyId: resolvedApiKey,
       microserviceId: resolvedMicroservice,
       environment: route.environment.environment,
       endpoint: `/${pathString}`,
@@ -79,6 +81,7 @@ export async function ANY(
       logger.logCancelled({
         requestId,
         clientId: resolvedClient,
+        apiKeyId: resolvedApiKey,
         microserviceId: resolvedMicroservice,
         environment: route.environment.environment,
         endpoint: `/${pathString}`,
@@ -162,6 +165,7 @@ export async function ANY(
     logger.logFailed({
       requestId,
       clientId: resolvedClient,
+      apiKeyId: resolvedApiKey,
       microserviceId: resolvedMicroservice,
       // Fallback environment if we failed before resolving
       environment: 'PRODUCTION', 

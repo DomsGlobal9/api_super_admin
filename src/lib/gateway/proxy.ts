@@ -32,6 +32,11 @@ export async function proxyRequest({
   // Inject Gateway specific headers
   sanitizedHeaders.set('X-Request-ID', requestId);
   sanitizedHeaders.set('X-Forwarded-For', req.headers.get('x-forwarded-for') || 'unknown');
+  
+  // Inject the internal master key for the backend to authenticate
+  if (environment.internalSecret) {
+    sanitizedHeaders.set('x-api-key', environment.internalSecret);
+  }
 
   // Configure the timeout controller
   const timeoutMs = environment.timeoutMs;
@@ -59,11 +64,19 @@ export async function proxyRequest({
 
     const response = await fetch(finalUrl, fetchOptions);
     
+    const responseHeaders = new Headers(response.headers);
+    
+    // Node's fetch automatically decompresses the body stream. 
+    // If we leave these headers, the client (Postman/Browser) will try to decompress an already uncompressed stream.
+    responseHeaders.delete('content-encoding');
+    responseHeaders.delete('content-length');
+    responseHeaders.delete('transfer-encoding');
+
     // We want to return the exact response downstream, including status and headers
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
-      headers: response.headers,
+      headers: responseHeaders,
     });
   } catch (error: any) {
     if (error.name === 'AbortError') {

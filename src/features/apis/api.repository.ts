@@ -47,6 +47,7 @@ export class ApiRepository extends BaseRepository<any> {
       where: { id, deletedAt: null },
       include: {
         module: true,
+        environments: true,
         apiVersions: {
           where: { status: { not: 'DISABLED' } },
           include: {
@@ -67,24 +68,48 @@ export class ApiRepository extends BaseRepository<any> {
   }
 
   async create(data: CreateApiDTO, adminUserId: string) {
+    const { targetUrl, internalSecret, ...rest } = data;
     return this.db.microservice.create({
       data: {
-        ...data,
+        ...rest,
         createdById: adminUserId,
         updatedById: adminUserId,
+        environments: {
+          create: {
+            environment: 'PRODUCTION',
+            targetUrl: targetUrl,
+            internalSecret: internalSecret || null,
+            status: 'ACTIVE'
+          }
+        }
       },
-      include: { module: true },
+      include: { module: true, environments: true },
     });
   }
 
   async update(id: string, data: UpdateApiDTO, adminUserId: string) {
+    const { targetUrl, internalSecret, ...rest } = data;
+    
+    // Build nested update for environment if necessary
+    const envUpdate: any = {};
+    if (targetUrl !== undefined) envUpdate.targetUrl = targetUrl;
+    if (internalSecret !== undefined) envUpdate.internalSecret = internalSecret || null;
+
     return this.db.microservice.update({
       where: { id },
       data: {
-        ...data,
+        ...rest,
         updatedById: adminUserId,
+        ...(Object.keys(envUpdate).length > 0 && {
+          environments: {
+            updateMany: {
+              where: { environment: 'PRODUCTION' },
+              data: envUpdate
+            }
+          }
+        })
       },
-      include: { module: true },
+      include: { module: true, environments: true },
     });
   }
 

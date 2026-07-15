@@ -38,8 +38,7 @@ const navigationGroups = [
         name: 'APIs & Services', 
         icon: Cpu,
         subItems: [
-          { name: 'Microservices', href: '/apis' },
-          { name: 'Modules', href: '/modules' },
+          { name: 'APIs', href: '/apis' },
           { name: 'Gateway Config', href: '/gateway' },
         ]
       },

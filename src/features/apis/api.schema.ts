@@ -6,6 +6,8 @@ export const CreateApiSchema = z.object({
   displayName: z.string().min(2),
   description: z.string().optional(),
   moduleId: z.string().uuid().optional(),
+  targetUrl: z.string().url("Must be a valid URL"),
+  internalSecret: z.string().optional(),
 });
 
 export const UpdateApiSchema = CreateApiSchema.partial();

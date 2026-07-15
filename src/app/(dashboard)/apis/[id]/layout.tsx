@@ -47,9 +47,7 @@ export default function ApiWorkspaceLayout({
 
   const tabs: WorkspaceTab[] = [
     { name: 'Overview', href: `/apis/${id}`, isActive: pathname === `/apis/${id}` },
-    { name: 'Versions', href: `/apis/${id}/versions`, isActive: pathname.includes('/versions') },
     { name: 'Endpoints', href: `/apis/${id}/endpoints`, isActive: pathname.includes('/endpoints') },
-    { name: 'Gateway', href: `/apis/${id}/gateway`, isActive: pathname.includes('/gateway') },
     { name: 'Usage', href: `/apis/${id}/usage`, isActive: pathname.includes('/usage') },
     { name: 'Clients', href: `/apis/${id}/clients`, isActive: pathname.includes('/clients') },
     { name: 'Keys', href: `/apis/${id}/keys`, isActive: pathname.includes('/keys') },

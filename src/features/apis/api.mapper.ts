@@ -17,6 +17,7 @@ export class ApiMapper {
       activeVersions: (api as any).apiVersions?.length || 0,
       totalEndpoints: (api as any).apiVersions?.reduce((acc: number, v: any) => acc + (v._count?.endpoints || 0), 0) || 0,
       requestsToday: (api as any)._count?.requestLogs || 0,
+      environments: (api as any).environments,
     };
   }
 

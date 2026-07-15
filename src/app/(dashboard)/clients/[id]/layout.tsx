@@ -6,9 +6,9 @@ import { WorkspaceLayout, WorkspaceTab } from '@/components/layout/WorkspaceLayo
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { WorkspaceSkeleton } from '@/components/ui/Skeletons';
 import { clientsApi } from '@/lib/api-client/clients';
-import { Key, Blocks, Ban } from 'lucide-react';
+import { Key, Cpu, Ban } from 'lucide-react';
 import { CreateKeyDialog } from '@/components/ui/CreateKeyDialog';
-import { AssignModuleDialog } from '@/components/ui/AssignModuleDialog';
+import { AssignApiDialog } from '@/components/ui/AssignApiDialog';
 
 export default function ClientWorkspaceLayout({
   children,
@@ -23,7 +23,7 @@ export default function ClientWorkspaceLayout({
   const [loading, setLoading] = useState(true);
   
   const [isKeyOpen, setIsKeyOpen] = useState(false);
-  const [isModuleOpen, setIsModuleOpen] = useState(false);
+  const [isApiOpen, setIsApiOpen] = useState(false);
 
   const loadClient = async () => {
       try {
@@ -46,7 +46,6 @@ export default function ClientWorkspaceLayout({
   const tabs: WorkspaceTab[] = [
     { name: 'Overview', href: `/clients/${id}`, isActive: pathname === `/clients/${id}` },
     { name: 'Subscriptions', href: `/clients/${id}/subscriptions`, isActive: pathname.includes('/subscriptions') },
-    { name: 'Modules', href: `/clients/${id}/modules`, isActive: pathname.includes('/modules') },
     { name: 'APIs', href: `/clients/${id}/apis`, isActive: pathname.includes('/apis') },
     { name: 'Keys', href: `/clients/${id}/keys`, isActive: pathname.includes('/keys') },
     { name: 'Usage', href: `/clients/${id}/usage`, isActive: pathname.includes('/usage') },
@@ -78,11 +77,11 @@ export default function ClientWorkspaceLayout({
         Create Key
       </button>
       <button 
-        onClick={() => setIsModuleOpen(true)}
+        onClick={() => setIsApiOpen(true)}
         className="inline-flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
-        <Blocks className="mr-2 h-4 w-4" />
-        Assign Module
+        <Cpu className="mr-2 h-4 w-4" />
+        Assign API
       </button>
       <button 
         onClick={handleSuspend}
@@ -118,9 +117,9 @@ export default function ClientWorkspaceLayout({
         onSuccess={loadClient}
       />
       
-      <AssignModuleDialog 
-        isOpen={isModuleOpen}
-        onClose={() => setIsModuleOpen(false)}
+      <AssignApiDialog 
+        isOpen={isApiOpen}
+        onClose={() => setIsApiOpen(false)}
         clientId={id}
         onSuccess={loadClient}
       />

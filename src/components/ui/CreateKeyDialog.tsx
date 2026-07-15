@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Key } from 'lucide-react';
+import { X, Key, Copy, Check } from 'lucide-react';
 import { apikeysClient } from '@/lib/api-client/apikeys';
 
 interface CreateKeyDialogProps {
@@ -13,6 +13,7 @@ export function CreateKeyDialog({ isOpen, onClose, clientId, onSuccess }: Create
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [createdKey, setCreatedKey] = useState<{ rawKey: string, name: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -46,6 +47,14 @@ export function CreateKeyDialog({ isOpen, onClose, clientId, onSuccess }: Create
     }
   };
 
+  const copyToClipboard = () => {
+    if (createdKey?.rawKey) {
+      navigator.clipboard.writeText(createdKey.rawKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const handleClose = () => {
     setCreatedKey(null);
     setFormData({ name: '', type: 'PRODUCTION' });
@@ -72,8 +81,17 @@ export function CreateKeyDialog({ isOpen, onClose, clientId, onSuccess }: Create
               <div className="bg-green-50 text-green-800 border border-green-200 rounded-md p-4 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800/50">
                 <h3 className="font-semibold mb-2">Key Created Successfully!</h3>
                 <p className="text-sm mb-4">Please copy this key now. For security reasons, you will <strong>never</strong> be able to see it again.</p>
-                <div className="bg-white dark:bg-black p-3 rounded border border-gray-200 dark:border-gray-800 font-mono text-sm break-all">
-                  {createdKey.rawKey}
+                <div className="relative">
+                  <div className="bg-white dark:bg-black p-3 pr-12 rounded border border-gray-200 dark:border-gray-800 font-mono text-sm break-all">
+                    {createdKey.rawKey}
+                  </div>
+                  <button
+                    onClick={copyToClipboard}
+                    className="absolute right-2 top-2 rounded p-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
+                    title="Copy to clipboard"
+                  >
+                    {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
               <div className="pt-4 flex justify-end">

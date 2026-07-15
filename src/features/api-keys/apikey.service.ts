@@ -31,7 +31,7 @@ export class ApiKeyService {
 
   async createApiKey(data: CreateApiKeyDTO, adminUserId: string) {
     const { rawKey, keyHash } = this.generateKey();
-    const created = await this.repo.create({ ...data, keyHash }, adminUserId);
+    const created = await this.repo.create({ ...data, keyHash, rawKey }, adminUserId);
     return ApiKeyMapper.toCreatedDTO(created, rawKey);
   }
 

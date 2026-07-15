@@ -6,4 +6,5 @@ export const apisClient = {
   getEndpoints: (id: string) => baseClient.get<any>(`/apis/${id}/endpoints`),
   createEndpoint: (id: string, data: any) => baseClient.post<any>(`/apis/${id}/endpoints`, data),
   createApi: (data: any) => baseClient.post<any>('/apis', data),
+  updateApi: (id: string, data: any) => baseClient.patch<any>(`/apis/${id}`, data),
 };

@@ -64,6 +64,11 @@ export class ClientRepository extends BaseRepository<any> {
         apiKeys: {
           where: { deletedAt: null }
         },
+        clientAccess: {
+          include: {
+            microservice: true
+          }
+        },
         _count: {
           select: { requestLogs: true }
         }
@@ -102,36 +107,44 @@ export class ClientRepository extends BaseRepository<any> {
     });
   }
 
-  async assignModule(clientId: string, moduleId: string) {
-    // 1. Ensure client has a subscription
-    let subscription = await this.db.subscription.findFirst({
-      where: { clientId, status: 'ACTIVE' }
-    });
-
-    if (!subscription) {
-      subscription = await this.db.subscription.create({
-        data: {
-          clientId,
-          plan: 'CUSTOM',
-          name: 'Custom Plan',
-          status: 'ACTIVE',
-        }
-      });
-    }
-
-    // 2. Check if already assigned
-    const existing = await this.db.subscriptionModuleAccess.findFirst({
-      where: { subscriptionId: subscription.id, moduleId }
+  async assignApi(clientId: string, apiId: string) {
+    // Check if already assigned
+    const existing = await this.db.clientAccess.findFirst({
+      where: { clientId, microserviceId: apiId }
     });
 
     if (existing) return existing;
 
-    // 3. Assign module
-    return this.db.subscriptionModuleAccess.create({
+    // Assign API (Microservice)
+    return this.db.clientAccess.create({
       data: {
-        subscriptionId: subscription.id,
-        moduleId,
+        clientId,
+        microserviceId: apiId,
+        enabled: true,
       }
+    });
+  }
+
+  async getClientAuditLogs(clientId: string) {
+    // Get all API keys for this client to include their audit logs too
+    const apiKeys = await this.db.apiKey.findMany({
+      where: { clientId },
+      select: { id: true }
+    });
+    const apiKeyIds = apiKeys.map((k: any) => k.id);
+
+    return this.db.auditLog.findMany({
+      where: {
+        OR: [
+          { entity: 'CLIENT', entityId: clientId },
+          { entity: 'API_KEY', entityId: { in: apiKeyIds } }
+        ]
+      },
+      include: {
+        adminUser: { select: { name: true, email: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100 // Limit to recent 100 logs
     });
   }
 }

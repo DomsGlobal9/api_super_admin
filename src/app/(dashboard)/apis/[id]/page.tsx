@@ -4,24 +4,27 @@ import { use, useEffect, useState } from 'react';
 import { apisClient } from '@/lib/api-client/apis';
 import { MetricCardSkeleton } from '@/components/ui/Skeletons';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { Activity, Box, ShieldCheck, Zap, AlertCircle } from 'lucide-react';
+import { Activity, Box, ShieldCheck, Zap, AlertCircle, Pencil } from 'lucide-react';
+import { EditApiDialog } from '@/components/ui/EditApiDialog';
 
 export default function ApiOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  const load = async () => {
+    try {
+      const res = await apisClient.getOverview(id);
+      setData(res);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await apisClient.getOverview(id);
-        setData(res);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
     load();
   }, [id]);
 
@@ -38,6 +41,24 @@ export default function ApiOverviewPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-800">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+            {data?.api?.displayName}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            API Slug: <span className="font-mono">{data?.api?.slug}</span>
+          </p>
+        </div>
+        <button
+          onClick={() => setIsEditOpen(true)}
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 h-9 px-4 py-2"
+        >
+          <Pencil className="mr-2 h-4 w-4" />
+          Edit API
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Requests Today"
@@ -68,20 +89,8 @@ export default function ApiOverviewPage({ params }: { params: Promise<{ id: stri
             <Box className="h-5 w-5 mr-2 text-indigo-500" />
             Top Endpoints
           </h2>
-          <div className="space-y-3">
-            {[
-              { path: 'POST /v2/generate', reqs: '850K', latency: '190ms' },
-              { path: 'GET /v2/status', reqs: '250K', latency: '45ms' },
-              { path: 'POST /v2/background-remove', reqs: '100K', latency: '350ms' }
-            ].map((ep, i) => (
-              <div key={i} className="flex justify-between items-center p-3 border border-gray-100 dark:border-gray-800 rounded-md bg-gray-50 dark:bg-gray-900">
-                <span className="font-mono text-sm text-gray-900 dark:text-gray-100 font-semibold">{ep.path}</span>
-                <div className="flex gap-4 text-xs text-gray-500">
-                  <span>{ep.reqs} reqs</span>
-                  <span>{ep.latency}</span>
-                </div>
-              </div>
-            ))}
+          <div className="text-center py-8 text-gray-500 text-sm">
+            No endpoint traffic recorded yet.
           </div>
         </div>
 
@@ -95,6 +104,14 @@ export default function ApiOverviewPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </div>
+
+      <EditApiDialog 
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        onSuccess={load}
+        apiId={id}
+        initialData={data?.api}
+      />
     </div>
   );
 }

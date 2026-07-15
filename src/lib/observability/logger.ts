@@ -87,6 +87,7 @@ export class PostgresLogger implements ILogger {
         update: {
           status: 'COMPLETED',
           statusCode: event.statusCode,
+          apiKeyId: event.apiKeyId,
           totalLatencyMs: event.totalLatencyMs,
           gatewayLatencyMs: event.gatewayLatencyMs,
           backendLatencyMs: event.backendLatencyMs,
@@ -131,6 +132,7 @@ export class PostgresLogger implements ILogger {
         update: {
           status: 'FAILED',
           statusCode: event.statusCode,
+          apiKeyId: event.apiKeyId,
           totalLatencyMs: event.totalLatencyMs,
           gatewayLatencyMs: event.gatewayLatencyMs,
           errorMessage: event.errorMessage,
@@ -166,6 +168,7 @@ export class PostgresLogger implements ILogger {
         update: {
           status: 'CANCELLED',
           statusCode: 499,
+          apiKeyId: event.apiKeyId,
           totalLatencyMs: event.totalLatencyMs,
           gatewayLatencyMs: event.gatewayLatencyMs,
           errorMessage: 'Client disconnected prematurely',

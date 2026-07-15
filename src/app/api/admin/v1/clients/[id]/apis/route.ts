@@ -6,8 +6,8 @@ import { authOptions } from '@/lib/auth/authOptions';
 import { AppError } from '@/lib/errors/errors';
 import { z } from 'zod';
 
-const AssignModuleSchema = z.object({
-  moduleId: z.string().uuid()
+const AssignApiSchema = z.object({
+  apiId: z.string().uuid()
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -20,19 +20,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const { id } = await params;
     const body = await req.json();
-    const parsedBody = AssignModuleSchema.safeParse(body);
+    const parsedBody = AssignApiSchema.safeParse(body);
 
     if (!parsedBody.success) {
       return badRequest('VALIDATION_ERROR', 'Invalid request body', parsedBody.error.format());
     }
 
-    const assignment = await clientService.assignModule(id, parsedBody.data.moduleId);
+    const assignment = await clientService.assignApi(id, parsedBody.data.apiId);
     return created(assignment);
   } catch (error: any) {
     if (error instanceof AppError && error.statusCode === 404) {
       return notFound(error.code, error.message);
     }
-    console.error('POST /clients/:id/modules Error:', error);
+    console.error('POST /clients/:id/apis Error:', error);
     return serverError('INTERNAL_ERROR', error.message);
   }
 }

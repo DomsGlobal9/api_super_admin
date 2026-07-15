@@ -38,9 +38,9 @@ export class ClientService {
     return this.repo.softDelete(id, adminUserId);
   }
 
-  async assignModule(clientId: string, moduleId: string) {
+  async assignApi(clientId: string, apiId: string) {
     await this.getClientById(clientId); // Ensure exists
-    return this.repo.assignModule(clientId, moduleId);
+    return this.repo.assignApi(clientId, apiId);
   }
 }
 

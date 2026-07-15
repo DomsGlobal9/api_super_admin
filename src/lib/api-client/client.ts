@@ -6,6 +6,7 @@ export class ApiClient {
 
     const response = await fetch(`/api/admin/v1${url}`, {
       ...options,
+      cache: 'no-store',
       headers: {
         ...defaultHeaders,
         ...options.headers,

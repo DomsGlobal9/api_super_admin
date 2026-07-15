@@ -1,16 +1,19 @@
-import { useState } from 'react';
-import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Eye, EyeOff } from 'lucide-react';
 import { apisClient } from '@/lib/api-client/apis';
 
-interface CreateApiDialogProps {
+interface EditApiDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  apiId: string;
+  initialData: any;
 }
 
-export function CreateApiDialog({ isOpen, onClose, onSuccess }: CreateApiDialogProps) {
+export function EditApiDialog({ isOpen, onClose, onSuccess, apiId, initialData }: EditApiDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showSecret, setShowSecret] = useState(false);
 
   const [formData, setFormData] = useState({
     displayName: '',
@@ -20,18 +23,23 @@ export function CreateApiDialog({ isOpen, onClose, onSuccess }: CreateApiDialogP
     internalSecret: '',
   });
 
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        displayName: initialData.displayName || '',
+        slug: initialData.slug || '',
+        description: initialData.description || '',
+        targetUrl: initialData.environments?.[0]?.targetUrl || '',
+        internalSecret: initialData.environments?.[0]?.internalSecret || '',
+      });
+    }
+  }, [initialData]);
+
   if (!isOpen) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => {
-      const next = { ...prev, [name]: value };
-      // Auto-generate slug from displayName if slug is untouched/empty (basic UX improvement)
-      if (name === 'displayName' && !prev.slug) {
-        next.slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      }
-      return next;
-    });
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,13 +52,11 @@ export function CreateApiDialog({ isOpen, onClose, onSuccess }: CreateApiDialogP
     setLoading(true);
 
     try {
-      await apisClient.createApi(formData);
+      await apisClient.updateApi(apiId, formData);
       onSuccess();
       onClose();
-      // Reset form
-      setFormData({ displayName: '', slug: '', description: '', targetUrl: '', internalSecret: '' });
     } catch (err: any) {
-      setError(err.message || 'Failed to create API');
+      setError(err.message || 'Failed to update API');
     } finally {
       setLoading(false);
     }
@@ -63,7 +69,7 @@ export function CreateApiDialog({ isOpen, onClose, onSuccess }: CreateApiDialogP
         <div className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Register New API
+              Edit API Configuration
             </h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
               <X className="h-5 w-5" />
@@ -85,7 +91,6 @@ export function CreateApiDialog({ isOpen, onClose, onSuccess }: CreateApiDialogP
                 name="displayName" 
                 value={formData.displayName} 
                 onChange={handleChange}
-                placeholder="e.g. TryOn Microservice"
                 className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -98,20 +103,7 @@ export function CreateApiDialog({ isOpen, onClose, onSuccess }: CreateApiDialogP
                 name="slug" 
                 value={formData.slug} 
                 onChange={handleSlugChange}
-                placeholder="tryon2buy"
                 className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
-              />
-              <p className="mt-1 text-xs text-gray-500">This will be used in gateway routes: /api/gateway/<strong>{formData.slug || 'slug'}</strong></p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</label>
-              <textarea 
-                name="description" 
-                value={formData.description} 
-                onChange={handleChange}
-                placeholder="Briefly describe what this API does..."
-                className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[80px] resize-y"
               />
             </div>
 
@@ -123,23 +115,33 @@ export function CreateApiDialog({ isOpen, onClose, onSuccess }: CreateApiDialogP
                 name="targetUrl" 
                 value={formData.targetUrl} 
                 onChange={handleChange}
-                placeholder="https://tryon-backend.onrender.com"
                 className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-              <p className="mt-1 text-xs text-gray-500">All gateway requests will be forwarded to this URL.</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Backend Master Key (Optional)</label>
-              <input 
-                type="password" 
-                name="internalSecret" 
-                value={formData.internalSecret} 
-                onChange={handleChange}
-                placeholder="sk_master_..."
-                className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <p className="mt-1 text-xs text-gray-500">Gateway will inject this into the x-api-key header before forwarding.</p>
+              <div className="relative">
+                <input 
+                  type={showSecret ? "text" : "password"} 
+                  name="internalSecret" 
+                  value={formData.internalSecret} 
+                  onChange={handleChange}
+                  placeholder="Leave blank to keep unchanged..."
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecret(!showSecret)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  {showSecret ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="pt-4 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-3 mt-6">
@@ -155,7 +157,7 @@ export function CreateApiDialog({ isOpen, onClose, onSuccess }: CreateApiDialogP
                 disabled={loading}
                 className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
               >
-                {loading ? 'Creating...' : 'Register API'}
+                {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
