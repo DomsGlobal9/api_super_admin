@@ -112,6 +112,12 @@ export class ClientRepository extends BaseRepository<any> {
     });
   }
 
+  async hardDelete(id: string) {
+    return this.db.client.delete({
+      where: { id }
+    });
+  }
+
   async assignApi(clientId: string, apiId: string) {
     // Check if already assigned
     const existing = await this.db.clientAccess.findFirst({

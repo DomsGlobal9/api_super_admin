@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { apikeysClient } from '@/lib/api-client/apikeys';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable } from '@/components/ui/data-table/DataTable';
@@ -8,7 +8,7 @@ import { DataTablePagination } from '@/components/ui/data-table/DataTablePaginat
 import { DataTableToolbar } from '@/components/ui/data-table/DataTableToolbar';
 import { TableSkeleton } from '@/components/ui/Skeletons';
 import { ApiKeyDrawer } from '@/components/ui/ApiKeyDrawer';
-import { columns, ApiKeyDTO } from './columns';
+import { getColumns, ApiKeyDTO } from './columns';
 import { Plus } from 'lucide-react';
 import { getCoreRowModel, useReactTable, getPaginationRowModel, getFilteredRowModel, Row } from '@tanstack/react-table';
 import { GenerateKeyModal } from '@/components/ui/GenerateKeyModal';
@@ -38,6 +38,7 @@ export default function ApiKeysPage() {
         lastUsedAt: key.lastUsedAt,
         lastIp: key.lastIp || 'N/A',
         requestsToday: key.requestsToday || 0,
+        requestCount: key.requestCount || 0,
         expiresAt: key.expiresAt,
       }));
       
@@ -52,6 +53,9 @@ export default function ApiKeysPage() {
   useEffect(() => {
     loadKeys();
   }, []);
+
+  // Memoize columns so they don't recreate on every render, passing the selectedKey setter
+  const columns = useMemo(() => getColumns(setSelectedKey), []);
 
   const table = useReactTable({
     data,
@@ -95,14 +99,7 @@ export default function ApiKeysPage() {
       ) : (
         <div className="space-y-4">
           <DataTableToolbar table={table} searchKey="name" searchPlaceholder="Search keys by name..." />
-          {/* Add custom onClick to row manually here in real implementation, or use a custom Cell for Actions that triggers the drawer */}
-          <div onClick={(e) => {
-             // In a real implementation we would attach this to the Actions cell
-             // For the walkthrough UI, clicking anywhere in the table opens the drawer for the first row
-             if(data.length > 0) setSelectedKey(data[0]);
-          }}>
-            <DataTable columns={columns} data={table.getRowModel().rows.map(r => r.original)} />
-          </div>
+          <DataTable columns={columns} data={table.getRowModel().rows.map(r => r.original)} />
           <DataTablePagination table={table} />
         </div>
       )}

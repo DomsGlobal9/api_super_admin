@@ -9,12 +9,12 @@ export function DataTablePagination<TData>({
   table,
 }: DataTablePaginationProps<TData>) {
   return (
-    <div className="flex items-center justify-between px-2 py-4">
-      <div className="flex-1 text-sm text-gray-500 dark:text-gray-400">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 py-4">
+      <div className="flex-1 text-sm text-gray-500 dark:text-gray-400 w-full text-center sm:text-left">
         Page {table.getState().pagination.pageIndex + 1} of{" "}
         {table.getPageCount()}
       </div>
-      <div className="flex items-center space-x-6 lg:space-x-8">
+      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 lg:gap-8 w-full sm:w-auto justify-between sm:justify-end">
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Rows per page</p>
           <select

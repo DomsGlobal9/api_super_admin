@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  LayoutDashboard, Users, Cpu, Activity, FileText, Settings, ChevronDown, ChevronRight 
+  LayoutDashboard, Users, Cpu, Activity, FileText, Settings, ChevronDown, ChevronRight, X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLayoutContext } from '@/components/providers/LayoutProvider';
 
 const navigationGroups = [
   {
@@ -186,6 +187,7 @@ function NavItem({
 export function Sidebar() {
   const pathname = usePathname();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const { isMobileSidebarOpen, closeSidebar } = useLayoutContext();
 
   // Initialize expanded item based on current pathname
   useEffect(() => {
@@ -203,10 +205,31 @@ export function Sidebar() {
   }, [pathname]);
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 shadow-sm">
-      <div className="flex h-16 items-center px-6 border-b border-gray-200 dark:border-gray-800">
-        <span className="text-xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400">ScaleEasy</span>
-      </div>
+    <>
+      {/* Mobile Overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-gray-900/80 backdrop-blur-sm lg:hidden transition-opacity"
+          onClick={closeSidebar}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div 
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 shadow-sm transition-transform duration-300 ease-in-out lg:static lg:translate-x-0",
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex h-16 items-center justify-between px-6 border-b border-gray-200 dark:border-gray-800">
+          <span className="text-xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400">ScaleEasy</span>
+          <button 
+            className="lg:hidden p-2 -mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            onClick={closeSidebar}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
       
       <div className="flex-1 overflow-y-auto py-4">
         <nav className="space-y-6 px-3">
@@ -232,6 +255,7 @@ export function Sidebar() {
           ))}
         </nav>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

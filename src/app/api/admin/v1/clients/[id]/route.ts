@@ -55,7 +55,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if ((session.user as any).role !== 'SUPER_ADMIN') return unauthorized('FORBIDDEN', 'Only SUPER_ADMIN can delete clients');
 
     const { id } = await params;
-    await clientService.deleteClient(id, (session.user as any).id);
+    const url = new URL(req.url);
+    const force = url.searchParams.get('hard') === 'true';
+    
+    await clientService.deleteClient(id, (session.user as any).id, force);
     return ok({ deleted: true });
   } catch (error: any) {
     if (error instanceof AppError && error.statusCode === 404) {

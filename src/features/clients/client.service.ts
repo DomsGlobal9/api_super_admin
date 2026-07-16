@@ -33,8 +33,11 @@ export class ClientService {
     return this.repo.update(id, data, adminUserId);
   }
 
-  async deleteClient(id: string, adminUserId: string) {
+  async deleteClient(id: string, adminUserId: string, force: boolean = false) {
     await this.getClientById(id); // Ensure exists
+    if (force) {
+      return this.repo.hardDelete(id);
+    }
     return this.repo.softDelete(id, adminUserId);
   }
 

@@ -56,10 +56,9 @@ export default function ClientOverviewPage({ params }: { params: Promise<{ id: s
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Requests Today"
-          value={data._count?.requestLogs || 0}
+          title="Total Requests (All Time)"
+          value={data._count?.requestLogs?.toLocaleString() || '0'}
           icon={Activity}
-          trend={{ value: 0, isPositive: true }}
         />
         <StatCard
           title="Success Rate"

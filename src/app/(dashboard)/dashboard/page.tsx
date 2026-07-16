@@ -100,7 +100,7 @@ export default function DashboardPage() {
               title="Active Clients"
               value={data.activeClients}
               icon={Users}
-              description="Total provisioned clients"
+              description="Currently active clients"
             />
             <StatCard
               title="Average Latency"

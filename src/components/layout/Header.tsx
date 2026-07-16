@@ -1,12 +1,13 @@
 'use client';
 
-import { Bell, Search, UserCircle, X, Terminal, Building2 } from 'lucide-react';
+import { Bell, Search, UserCircle, X, Terminal, Building2, Menu } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { clientsApi } from '@/lib/api-client/clients';
 import { apisClient } from '@/lib/api-client/apis';
+import { useLayoutContext } from '@/components/providers/LayoutProvider';
 
 export function Header() {
   const [query, setQuery] = useState('');
@@ -16,6 +17,7 @@ export function Header() {
   const [loading, setLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { toggleSidebar } = useLayoutContext();
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -68,7 +70,21 @@ export function Header() {
   }, [query]);
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 relative z-50">
+    <header className="flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 relative z-30">
+      
+      {/* Mobile Hamburger Menu */}
+      <button
+        type="button"
+        className="-m-2.5 p-2.5 text-gray-700 dark:text-gray-200 lg:hidden"
+        onClick={toggleSidebar}
+      >
+        <span className="sr-only">Open sidebar</span>
+        <Menu className="h-6 w-6" aria-hidden="true" />
+      </button>
+
+      {/* Separator for mobile */}
+      <div className="h-6 w-px bg-gray-200 dark:bg-gray-800 lg:hidden" aria-hidden="true" />
+
       <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
         <div ref={wrapperRef} className="relative flex flex-1 items-center">
           <label htmlFor="search-field" className="sr-only">

@@ -5,7 +5,7 @@ export const CreateClientSchema = z.object({
   companyName: z.string().min(2, 'Company name is required'),
   contactName: z.string().optional(),
   email: z.string().email('Invalid email address'),
-  phone: z.string().optional(),
+  phone: z.string().regex(/^\d{10}$/, 'Phone number must be exactly 10 digits').optional().or(z.literal('')),
   notes: z.string().optional(),
   status: z.nativeEnum(ClientStatus).optional().default('ACTIVE'),
 });

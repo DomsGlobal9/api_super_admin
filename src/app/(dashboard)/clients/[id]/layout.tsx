@@ -6,7 +6,7 @@ import { WorkspaceLayout, WorkspaceTab } from '@/components/layout/WorkspaceLayo
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { WorkspaceSkeleton } from '@/components/ui/Skeletons';
 import { clientsApi } from '@/lib/api-client/clients';
-import { Key, Cpu, Ban } from 'lucide-react';
+import { Key, Cpu } from 'lucide-react';
 import { CreateKeyDialog } from '@/components/ui/CreateKeyDialog';
 import { AssignApiDialog } from '@/components/ui/AssignApiDialog';
 
@@ -21,7 +21,6 @@ export default function ClientWorkspaceLayout({
   const pathname = usePathname();
   const [client, setClient] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
   const [isKeyOpen, setIsKeyOpen] = useState(false);
   const [isApiOpen, setIsApiOpen] = useState(false);
 
@@ -55,17 +54,7 @@ export default function ClientWorkspaceLayout({
     { name: 'Settings', href: `/clients/${id}/settings`, isActive: pathname.includes('/settings') },
   ];
 
-  const handleSuspend = async () => {
-    try {
-      const newStatus = client.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
-      const updated = await clientsApi.update(id, { status: newStatus });
-      setClient(updated);
-    } catch (err) {
-      console.error('Failed to update status', err);
-    }
-  };
 
-  const isSuspended = client.status === 'SUSPENDED';
 
   const actions = (
     <>
@@ -82,17 +71,6 @@ export default function ClientWorkspaceLayout({
       >
         <Cpu className="mr-2 h-4 w-4" />
         Assign API
-      </button>
-      <button 
-        onClick={handleSuspend}
-        className={`inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-          isSuspended 
-            ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/40'
-            : 'border-gray-300 bg-white text-orange-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-orange-500 dark:hover:bg-gray-900'
-        }`}
-      >
-        <Ban className="mr-2 h-4 w-4" />
-        {isSuspended ? 'Activate' : 'Suspend'}
       </button>
     </>
   );
@@ -123,6 +101,7 @@ export default function ClientWorkspaceLayout({
         clientId={id}
         onSuccess={loadClient}
       />
+
     </WorkspaceLayout>
   );
 }

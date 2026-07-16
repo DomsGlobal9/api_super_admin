@@ -15,10 +15,11 @@ export type ApiKeyDTO = {
   lastUsedAt: string | null;
   lastIp: string | null;
   requestsToday: number;
+  requestCount: number;
   expiresAt: string | null;
 };
 
-export const columns: ColumnDef<ApiKeyDTO>[] = [
+export const getColumns = (onAction: (key: ApiKeyDTO) => void): ColumnDef<ApiKeyDTO>[] => [
   {
     accessorKey: 'name',
     header: 'Key Name',
@@ -76,7 +77,10 @@ export const columns: ColumnDef<ApiKeyDTO>[] = [
     cell: ({ row }) => {
       // In a real app this would trigger the drawer
       return (
-        <button className="text-gray-400 hover:text-indigo-600 transition-colors p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
+        <button 
+          onClick={() => onAction(row.original)}
+          className="text-gray-400 hover:text-indigo-600 transition-colors p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+        >
           <MoreHorizontal className="h-5 w-5" />
         </button>
       );
