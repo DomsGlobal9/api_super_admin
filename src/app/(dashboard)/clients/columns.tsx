@@ -60,7 +60,7 @@ export const columns: ColumnDef<ClientListDTO>[] = [
   },
   {
     accessorKey: 'requestsToday',
-    header: 'Requests (24h)',
+    header: 'Requests Today',
     cell: ({ row }) => <span className="font-medium">{row.getValue<number>('requestsToday').toLocaleString()}</span>,
   },
   {

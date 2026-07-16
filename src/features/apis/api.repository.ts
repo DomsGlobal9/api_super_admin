@@ -32,7 +32,12 @@ export class ApiRepository extends BaseRepository<any> {
             }
           },
           _count: {
-            select: { requestLogs: true, clientAccess: true }
+            select: { 
+              requestLogs: {
+                where: { timestamp: { gte: new Date(new Date().setHours(0,0,0,0)) } }
+              }, 
+              clientAccess: true 
+            }
           }
         },
         orderBy: { displayName: 'asc' },
@@ -61,7 +66,11 @@ export class ApiRepository extends BaseRepository<any> {
           include: { apiKey: true }
         },
         _count: {
-          select: { requestLogs: true }
+          select: { 
+            requestLogs: {
+              where: { timestamp: { gte: new Date(new Date().setHours(0,0,0,0)) } }
+            } 
+          }
         }
       }
     });

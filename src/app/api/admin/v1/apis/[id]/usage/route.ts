@@ -12,9 +12,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { id } = await params;
     
-    // Check if client exists
-    const client = await prisma.client.findUnique({ where: { id, deletedAt: null } });
-    if (!client) return notFound('CLIENT_NOT_FOUND', 'Client not found');
+    // Check if API exists
+    const api = await prisma.microservice.findUnique({ where: { id, deletedAt: null } });
+    if (!api) return notFound('API_NOT_FOUND', 'API not found');
 
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -22,26 +22,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const statusFilter = req.nextUrl.searchParams.get('status');
     const daysFilter = req.nextUrl.searchParams.get('days');
-    const specificDateFilter = req.nextUrl.searchParams.get('specificDate');
     const endpointFilter = req.nextUrl.searchParams.get('endpoint');
     const apiKeyIdFilter = req.nextUrl.searchParams.get('apiKeyId');
+    const clientIdFilter = req.nextUrl.searchParams.get('clientId');
 
-    const conditions: Prisma.Sql[] = [Prisma.sql`"clientId" = ${id}`];
+    const conditions: Prisma.Sql[] = [Prisma.sql`"microserviceId" = ${id}`];
 
     if (apiKeyIdFilter) {
       conditions.push(Prisma.sql`"apiKeyId" = ${apiKeyIdFilter}`);
+    }
+    
+    if (clientIdFilter) {
+      conditions.push(Prisma.sql`"clientId" = ${clientIdFilter}`);
     }
 
     if (endpointFilter) {
       conditions.push(Prisma.sql`"endpoint" ILIKE ${'%' + endpointFilter + '%'}`);
     }
 
-    if (daysFilter === 'specific' && specificDateFilter) {
-      const specificStart = new Date(specificDateFilter);
-      const specificEnd = new Date(specificStart);
-      specificEnd.setDate(specificEnd.getDate() + 1);
-      conditions.push(Prisma.sql`"timestamp" >= ${specificStart} AND "timestamp" < ${specificEnd}`);
-    } else if (daysFilter && daysFilter !== 'specific') {
+    if (daysFilter) {
       const days = parseInt(daysFilter, 10);
       if (!isNaN(days) && days > 0) {
         const date = new Date();
@@ -92,7 +91,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
 
   } catch (error: any) {
-    console.error(`GET /clients/:id/usage Error:`, error);
+    console.error(`GET /apis/:id/usage Error:`, error);
     return serverError('INTERNAL_ERROR', error.message);
   }
 }

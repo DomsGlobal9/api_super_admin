@@ -51,7 +51,7 @@ export default function AuditLogsPage() {
         />
         <select className="text-sm border-gray-300 rounded-md dark:bg-gray-900 dark:border-gray-700 py-1.5 pl-3 pr-8">
           <option>All Actors</option>
-          <option>admin@scaleeasy.com</option>
+          <option>jane.doe@company.com</option>
         </select>
         <select className="text-sm border-gray-300 rounded-md dark:bg-gray-900 dark:border-gray-700 py-1.5 pl-3 pr-8">
           <option>Last 7 Days</option>

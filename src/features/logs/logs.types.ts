@@ -6,6 +6,7 @@ export interface RequestLogDTO {
   clientName?: string;
   apiId: string;
   apiName?: string;
+  apiKeyName?: string;
   endpoint: string;
   method: string;
   status: string;

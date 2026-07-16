@@ -40,6 +40,12 @@ export default function ApiWorkspaceLayout({
       }
     }
     load();
+
+    const intervalId = setInterval(() => {
+      load();
+    }, 3000);
+
+    return () => clearInterval(intervalId);
   }, [id]);
 
   if (loading) return <WorkspaceSkeleton />;

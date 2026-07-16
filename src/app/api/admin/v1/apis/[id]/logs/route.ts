@@ -17,18 +17,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const pageSize = parseInt(searchParams.get('pageSize') || '50', 10);
     const skip = (page - 1) * pageSize;
 
-    // Check if client exists
-    const client = await prisma.client.findUnique({ where: { id, deletedAt: null } });
-    if (!client) return notFound('CLIENT_NOT_FOUND', 'Client not found');
+    // Check if API exists
+    const api = await prisma.microservice.findUnique({ where: { id, deletedAt: null } });
+    if (!api) return notFound('API_NOT_FOUND', 'API not found');
 
     const statusFilter = searchParams.get('status');
     const daysFilter = searchParams.get('days');
-    const specificDateFilter = searchParams.get('specificDate');
     const endpointFilter = searchParams.get('endpoint');
     const apiKeyIdFilter = searchParams.get('apiKeyId');
+    const clientIdFilter = searchParams.get('clientId');
 
     // Build Prisma where clause
-    const where: any = { clientId: id };
+    const where: any = { microserviceId: id };
+
+    if (clientIdFilter) {
+      where.clientId = clientIdFilter;
+    }
 
     if (statusFilter) {
       if (statusFilter === 'success') where.statusCode = { gte: 200, lt: 400 };
@@ -36,12 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       if (statusFilter === 'server_error') where.statusCode = { gte: 500 };
     }
 
-    if (daysFilter === 'specific' && specificDateFilter) {
-      const specificStart = new Date(specificDateFilter);
-      const specificEnd = new Date(specificStart);
-      specificEnd.setDate(specificEnd.getDate() + 1);
-      where.timestamp = { gte: specificStart, lt: specificEnd };
-    } else if (daysFilter && daysFilter !== 'specific') {
+    if (daysFilter) {
       const days = parseInt(daysFilter, 10);
       if (!isNaN(days) && days > 0) {
         const date = new Date();
@@ -66,7 +65,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         skip,
         take: pageSize,
         include: {
-          microservice: { select: { displayName: true } },
+          client: { select: { companyName: true } },
           apiKey: { select: { name: true } }
         }
       })
@@ -81,7 +80,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
 
   } catch (error: any) {
-    console.error(`GET /clients/:id/requests Error:`, error);
+    console.error(`GET /apis/:id/logs Error:`, error);
     return serverError('INTERNAL_ERROR', error.message);
   }
 }

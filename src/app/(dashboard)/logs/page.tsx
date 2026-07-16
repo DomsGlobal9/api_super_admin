@@ -34,17 +34,19 @@ export default function RequestLogsPage() {
           clientsApi.list({ pageSize: 100 }),
           apisClient.list({ pageSize: 100 })
         ]);
-        if (c.status === 'fulfilled') setClients(c.value.clients || []);
-        if (a.status === 'fulfilled') setApis(a.value.apis || []);
+        if (c.status === 'fulfilled') setClients(Array.isArray(c.value) ? c.value : []);
+        if (a.status === 'fulfilled') setApis(Array.isArray(a.value) ? a.value : []);
       } catch (e) {}
     }
     loadFilters();
   }, []);
 
   useEffect(() => {
-    async function loadLogs() {
+    let intervalId: NodeJS.Timeout;
+
+    async function loadLogs(isPolling = false) {
       try {
-        setLoading(true);
+        if (!isPolling) setLoading(true);
         const params: any = { pageSize: 100 };
         if (filterClient) params.clientId = filterClient;
         if (filterApi) params.apiId = filterApi;
@@ -62,7 +64,7 @@ export default function RequestLogsPage() {
           statusCode: log.statusCode,
           latencyMs: log.totalLatency,
           clientName: log.clientName || 'Unknown',
-          apiKeyPrefix: log.apiKeyPrefix || 'sk_live_...', // Requires DB migration to track api key explicitly on log if not there
+          apiKeyName: log.apiKeyName || 'Unknown Key',
           cacheHit: log.cacheHit,
           errorMessage: log.errorMessage,
           requestPayload: log.requestPayload,
@@ -71,12 +73,24 @@ export default function RequestLogsPage() {
         
         setData(mappedData);
       } catch (err: any) {
-        setError(err.message);
+        if (!isPolling) setError(err.message);
       } finally {
-        setLoading(false);
+        if (!isPolling) setLoading(false);
       }
     }
-    loadLogs();
+
+    async function initializeAndPoll() {
+      await loadLogs(false);
+      intervalId = setInterval(() => {
+        loadLogs(true);
+      }, 3000);
+    }
+
+    initializeAndPoll();
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [filterClient, filterApi, filterStatus]);
 
   const table = useReactTable({
@@ -126,9 +140,8 @@ export default function RequestLogsPage() {
         >
           <option value="">All Statuses</option>
           <option value="COMPLETED">Completed</option>
-          <option value="ERROR">Error</option>
-          <option value="TIMEOUT">Timeout</option>
-          <option value="RATE_LIMITED">Rate Limited</option>
+          <option value="FAILED">Failed</option>
+          <option value="CANCELLED">Cancelled</option>
         </select>
       </div>
 

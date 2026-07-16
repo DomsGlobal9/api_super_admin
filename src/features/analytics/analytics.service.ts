@@ -3,10 +3,11 @@ import { MetricsService, metricsService as defaultMetricsService } from '../plat
 export class AnalyticsService {
   constructor(private readonly metrics: MetricsService = defaultMetricsService) {}
 
-  async getGlobalAnalytics(timeframe: string) {
-    // In the future, pass timeframe down to metricsService to fetch historical data
-    // Analytics orchestrates metrics to build historical trend lines, not just point-in-time
-    const [requests, failedRequests, latency, bandwidth, expiringKeys, topClients, topApis, topEndpoints] = await Promise.all([
+  async getGlobalAnalytics(timeframe: string = '30d') {
+    const daysMap: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
+    const days = daysMap[timeframe] || 30;
+
+    const [requests, failedRequests, latency, bandwidth, expiringKeys, topClients, topApis, topEndpoints, trafficTrends] = await Promise.all([
       this.metrics.getRequestsToday(), // Future: getRequests(timeframe)
       this.metrics.getFailedRequestsToday(),
       this.metrics.getAverageLatencyMs(),
@@ -14,12 +15,13 @@ export class AnalyticsService {
       this.metrics.getExpiringApiKeysCount(),
       this.metrics.getTopClients(),
       this.metrics.getTopApis(),
-      this.metrics.getTopEndpoints()
+      this.metrics.getTopEndpoints(),
+      this.metrics.getHistoricalTrafficTrends(days)
     ]);
 
     return {
       trends: {
-        traffic: [], // Array of { date, value } for charting
+        traffic: trafficTrends,
         latency: [], 
         errors: []
       },

@@ -12,7 +12,7 @@ export type RequestLogDTO = {
   statusCode: number;
   latencyMs: number;
   clientName: string;
-  apiKeyPrefix: string;
+  apiKeyName: string;
   cacheHit: boolean;
 };
 
@@ -78,9 +78,9 @@ export const columns: ColumnDef<RequestLogDTO>[] = [
     cell: ({ row }) => <span className="text-gray-700 dark:text-gray-300 font-medium">{row.getValue('clientName')}</span>,
   },
   {
-    accessorKey: 'apiKeyPrefix',
+    accessorKey: 'apiKeyName',
     header: 'API Key',
-    cell: ({ row }) => <span className="font-mono text-xs text-gray-500">{row.getValue('apiKeyPrefix')}</span>,
+    cell: ({ row }) => <span className="font-mono text-xs text-gray-500">{row.getValue('apiKeyName')}</span>,
   },
   {
     id: 'actions',

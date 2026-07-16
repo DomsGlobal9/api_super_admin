@@ -18,6 +18,9 @@ export class ClientRepository extends BaseRepository<any> {
       }),
     };
 
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
     const [total, clients] = await Promise.all([
       this.db.client.count({ where }),
       this.db.client.findMany({
@@ -38,7 +41,9 @@ export class ClientRepository extends BaseRepository<any> {
           _count: {
             select: {
               apiKeys: { where: { deletedAt: null } },
-              requestLogs: true
+              requestLogs: {
+                where: { timestamp: { gte: todayStart } }
+              }
             }
           }
         }

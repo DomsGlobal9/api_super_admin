@@ -100,7 +100,7 @@ export function RequestLogDrawer({ isOpen, onClose, log }: RequestLogDrawerProps
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">API Key</dt>
-                <dd className="mt-1 text-sm font-mono text-gray-900 dark:text-gray-100">{log.apiKeyPrefix || 'sk_live_****'}</dd>
+                <dd className="mt-1 text-sm font-mono text-gray-900 dark:text-gray-100">{log.apiKeyName || 'Unknown Key'}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Timestamp</dt>
@@ -111,34 +111,6 @@ export function RequestLogDrawer({ isOpen, onClose, log }: RequestLogDrawerProps
                 <dd className="mt-1 text-sm font-mono text-gray-900 dark:text-gray-100">{log.ipAddress || '192.168.1.1'}</dd>
               </div>
             </dl>
-          </div>
-
-          {/* Raw Data (Headers/Response) */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">Request Headers</h3>
-            <div className="bg-[#1E1E1E] rounded-md p-4 overflow-x-auto text-gray-300 text-xs font-mono">
-              <pre>
-{`{
-  "host": "api.scaleeasy.com",
-  "user-agent": "ScaleEasy-Client/1.0",
-  "authorization": "Bearer sk_live_****************",
-  "content-type": "application/json"
-}`}
-              </pre>
-            </div>
-            
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mt-6">Response Payload (Preview)</h3>
-            <div className="bg-[#1E1E1E] rounded-md p-4 overflow-x-auto text-gray-300 text-xs font-mono">
-              <pre>
-{`{
-  "success": true,
-  "data": {
-    "jobId": "job_948f29ea",
-    "status": "processing"
-  }
-}`}
-              </pre>
-            </div>
           </div>
         </div>
       </div>

@@ -16,7 +16,9 @@ export async function GET(req: NextRequest) {
       healthService.getDatabaseStatus(),
       metricsService.getRPM(),
       healthService.getCircuitBreakerStatus(),
-      metricsService.getAverageLatencyMs()
+      metricsService.getAverageLatencyMs(),
+      metricsService.getThroughputMBps(),
+      metricsService.getReliabilityMetrics24h()
     ]);
 
     const getValue = <T>(result: PromiseSettledResult<T>, fallback: T): T => {
@@ -31,6 +33,12 @@ export async function GET(req: NextRequest) {
     const rpm = getValue(results[3], 0);
     const circuitBreakers = getValue(results[4], { open: 0, halfOpen: 0 });
     const avgLatency = getValue(results[5], 0);
+    const throughput = getValue(results[6], 0);
+    const reliability24h = getValue(results[7], { total: 0, timeouts: 0, errors: 0, errorRate: '0.00', retries: 0 });
+
+    const activeRequests = metricsService.getActiveRequests(rpm, avgLatency);
+    const memoryUsage = healthService.getMemoryUsage();
+    const cacheHitRate = await healthService.getCacheHitRate(rpm);
 
     return ok({
       infrastructure: { 
@@ -41,21 +49,21 @@ export async function GET(req: NextRequest) {
       },
       traffic: { 
         rps: Math.round(rpm / 60), 
-        activeRequests: 0, // In real life, fetch from Redis active count
-        throughput: '0 MB/s', 
+        activeRequests,
+        throughput: `${throughput} MB/s`, 
         avgLatency: `${avgLatency}ms` 
       },
       reliability: { 
         circuitBreakers: circuitBreakers.open, 
-        timeouts: 0, 
-        retries: 0, 
-        errorRate: '0.00%' 
+        timeouts: reliability24h.timeouts, 
+        retries: reliability24h.retries, 
+        errorRate: `${reliability24h.errorRate}%` 
       },
       capacity: { 
-        memory: 'N/A', 
-        connections: 0, 
-        cacheHitRate: '0%', 
-        queueDepth: 0 
+        memory: memoryUsage, 
+        connections: Math.max(10, Math.round(rpm / 10)), // Simulated DB connections
+        cacheHitRate, 
+        queueDepth: Math.max(0, activeRequests - 100) // Simulated queue
       }
     });
   } catch (error: any) {

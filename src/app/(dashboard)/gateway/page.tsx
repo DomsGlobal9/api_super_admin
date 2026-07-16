@@ -24,6 +24,12 @@ export default function GatewayNOCPage() {
       }
     }
     load();
+
+    const intervalId = setInterval(() => {
+      load();
+    }, 3000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   if (loading) return <WorkspaceSkeleton />;

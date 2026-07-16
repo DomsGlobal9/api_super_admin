@@ -61,7 +61,8 @@ export async function GET(req: NextRequest) {
         take: pagination.take,
         include: {
           client: true,
-          microservice: true
+          microservice: true,
+          apiKey: true
         },
         orderBy: { timestamp: 'desc' }
       })

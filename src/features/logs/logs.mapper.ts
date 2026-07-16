@@ -1,9 +1,10 @@
-import { RequestLog, Client, Microservice } from '@prisma/client';
+import { RequestLog, Client, Microservice, ApiKey } from '@prisma/client';
 import { RequestLogDTO } from './logs.types';
 
 type RequestLogWithRelations = RequestLog & {
   client?: Client | null;
   microservice?: Microservice | null;
+  apiKey?: ApiKey | null;
 };
 
 export class LogsMapper {
@@ -16,6 +17,7 @@ export class LogsMapper {
       clientName: log.client?.companyName || undefined,
       apiId: log.microserviceId || 'unknown',
       apiName: log.microservice?.displayName || undefined,
+      apiKeyName: log.apiKey?.name || undefined,
       endpoint: log.endpoint,
       method: log.method,
       status: log.status,

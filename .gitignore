@@ -43,3 +43,8 @@ next-env.d.ts
 /src/generated/prisma
 
 Gateway_Test.postman_collection.json
+
+# Scratch and test scripts
+scratch*.js
+scratch*.ts
+scratch/

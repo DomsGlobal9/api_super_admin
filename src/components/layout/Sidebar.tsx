@@ -15,11 +15,7 @@ const navigationGroups = [
       { 
         name: 'Dashboard', 
         icon: LayoutDashboard, 
-        subItems: [
-          { name: 'Overview', href: '/dashboard' },
-          { name: 'Analytics', href: '/analytics' },
-          { name: 'Usage', href: '/usage' },
-        ]
+        href: '/dashboard'
       },
       { 
         name: 'Customers', 
@@ -40,14 +36,6 @@ const navigationGroups = [
         subItems: [
           { name: 'APIs', href: '/apis' },
           { name: 'Gateway Config', href: '/gateway' },
-        ]
-      },
-      { 
-        name: 'Monitoring', 
-        icon: Activity,
-        subItems: [
-          { name: 'System Health', href: '/health' },
-          { name: 'Alerts', href: '/alerts' },
         ]
       },
       { 
