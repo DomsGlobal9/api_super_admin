@@ -128,3 +128,22 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-docs, #printable-docs * {
+    visibility: visible;
+  }
+  #printable-docs {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: visible !important;
+    height: auto !important;
+  }
+}

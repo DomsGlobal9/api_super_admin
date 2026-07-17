@@ -1,9 +1,10 @@
 import { BaseRepository } from '@/lib/core/repository';
 import { CreateClientDTO, UpdateClientDTO, ClientQueryDTO } from './client.schema';
 import { Prisma } from '@prisma/client';
+import { getDateBoundaries } from '@/lib/date-utils';
 
 export class ClientRepository extends BaseRepository<any> {
-  async findMany(query: ClientQueryDTO) {
+  async findMany(query: ClientQueryDTO, tzOffset?: number) {
     const { page, pageSize, search, status } = query;
     const skip = (page - 1) * pageSize;
 
@@ -18,8 +19,7 @@ export class ClientRepository extends BaseRepository<any> {
       }),
     };
 
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const { todayStart } = getDateBoundaries(tzOffset);
 
     const [total, clients] = await Promise.all([
       this.db.client.count({ where }),
@@ -53,7 +53,8 @@ export class ClientRepository extends BaseRepository<any> {
     return { total, clients };
   }
 
-  async findById(id: string) {
+  async findById(id: string, tzOffset?: number) {
+    const { todayStart } = getDateBoundaries(tzOffset);
     return this.db.client.findFirst({
       where: { id, deletedAt: null },
       include: {

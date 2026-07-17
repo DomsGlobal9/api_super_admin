@@ -3,6 +3,7 @@ import { redis } from '@/lib/redis';
 
 import { PrismaClient } from '@prisma/client';
 import { Redis } from '@upstash/redis';
+import { getDateBoundaries } from '@/lib/date-utils';
 
 export class MetricsService {
   constructor(
@@ -17,6 +18,15 @@ export class MetricsService {
   }
 
   async getRequestsToday() {
+    const { todayStart } = getDateBoundaries();
+    return this.db.requestLog.count({
+      where: {
+        timestamp: { gte: todayStart }
+      }
+    });
+  }
+
+  async getRequests24h() {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     return this.db.requestLog.count({
       where: {
@@ -26,13 +36,28 @@ export class MetricsService {
   }
 
   async getFailedRequestsToday() {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const { todayStart } = getDateBoundaries();
     return this.db.requestLog.count({
       where: {
-        timestamp: { gte: twentyFourHoursAgo },
+        timestamp: { gte: todayStart },
         statusCode: { gte: 400 }
       }
     });
+  }
+
+  async getAllTimeSuccesses() {
+    return this.db.requestLog.count({
+      where: {
+        statusCode: {
+          gte: 200,
+          lt: 400
+        }
+      }
+    });
+  }
+
+  async getAllTimeRequests() {
+    return this.db.requestLog.count();
   }
 
   async getExpiringApiKeysCount() {
@@ -78,9 +103,9 @@ export class MetricsService {
   }
 
   async getBandwidthToday() {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const { todayStart } = getDateBoundaries();
     const agg = await this.db.requestLog.aggregate({
-      where: { timestamp: { gte: twentyFourHoursAgo } },
+      where: { timestamp: { gte: todayStart } },
       _sum: { requestSize: true, responseSize: true }
     });
     return (agg._sum.requestSize || 0) + (agg._sum.responseSize || 0);
@@ -194,8 +219,8 @@ export class MetricsService {
     }));
   }
 
-  async getHistoricalTrafficTrends(days: number) {
-    const cacheKey = `analytics:traffic_trends:${days}d`;
+  async getHistoricalTrafficTrends(days: number, tzOffsetMinutes?: number) {
+    const cacheKey = `analytics:traffic_trends:${days}d:tz:${tzOffsetMinutes || 0}`;
     try {
       const cached = await this.cache.get(cacheKey);
       if (cached) return typeof cached === 'string' ? JSON.parse(cached) : cached;
@@ -203,18 +228,36 @@ export class MetricsService {
       console.warn("Redis read failed for traffic trends");
     }
 
-    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    startDate.setHours(0, 0, 0, 0);
+    // JS getTimezoneOffset() returns minutes to ADD to local to get UTC.
+    // So to convert UTC to local, we subtract the offset.
+    const offsetToLocal = -(tzOffsetMinutes || 0); 
+    
+    // Calculate accurate start date in client's timezone
+    const now = new Date();
+    const clientNowTime = now.getTime() + offsetToLocal * 60000;
+    const clientNow = new Date(clientNowTime);
+    
+    // Go back `days` days, and set to client's midnight
+    const clientStartDate = new Date(Date.UTC(clientNow.getUTCFullYear(), clientNow.getUTCMonth(), clientNow.getUTCDate() - days, 0, 0, 0, 0));
+    // Convert client midnight back to absolute UTC
+    const startDate = new Date(clientStartDate.getTime() - offsetToLocal * 60000);
 
     try {
+      // Group by timezone-shifted day using a CTE to avoid Prisma parameter index mismatch on GROUP BY
       const agg = await this.db.$queryRaw`
+        WITH ShiftedLogs AS (
+          SELECT 
+            DATE_TRUNC('day', "timestamp" + (${offsetToLocal} * INTERVAL '1 minute')) as date,
+            "statusCode"
+          FROM super_admin."RequestLog"
+          WHERE "timestamp" >= ${startDate}
+        )
         SELECT 
-          DATE_TRUNC('day', "timestamp") as date,
+          date,
           COUNT(*)::int as requests,
           SUM(CASE WHEN "statusCode" >= 400 THEN 1 ELSE 0 END)::int as errors
-        FROM super_admin."RequestLog"
-        WHERE "timestamp" >= ${startDate}
-        GROUP BY DATE_TRUNC('day', "timestamp")
+        FROM ShiftedLogs
+        GROUP BY date
         ORDER BY date ASC
       `;
 

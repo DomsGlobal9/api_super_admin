@@ -6,7 +6,9 @@ import { WorkspaceLayout, WorkspaceTab } from '@/components/layout/WorkspaceLayo
 import { HealthBadge } from '@/components/ui/HealthBadge';
 import { WorkspaceSkeleton } from '@/components/ui/Skeletons';
 import { apisClient } from '@/lib/api-client/apis';
-import { Plus, Play, BookOpen } from 'lucide-react';
+import { Plus, Play } from 'lucide-react';
+import { AddEndpointDialog } from '@/components/ui/AddEndpointDialog';
+import { useRouter } from 'next/navigation';
 
 export default function ApiWorkspaceLayout({
   children,
@@ -17,8 +19,10 @@ export default function ApiWorkspaceLayout({
 }) {
   const { id } = use(params);
   const pathname = usePathname();
+  const router = useRouter();
   const [api, setApi] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isAddEndpointOpen, setIsAddEndpointOpen] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -27,6 +31,7 @@ export default function ApiWorkspaceLayout({
         setApi({
           name: res.api?.displayName || 'Unknown API',
           version: res.api?.activeVersions > 0 ? `v${res.api.activeVersions}` : 'v1.0.0',
+          versionId: res.versions?.[0]?.id || '',
           health: 'HEALTHY',
           requestsToday: res.api?.requestsToday || 0,
           latency: '0ms',
@@ -65,17 +70,13 @@ export default function ApiWorkspaceLayout({
 
   const actions = (
     <>
-      <button className="inline-flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <button onClick={() => setIsAddEndpointOpen(true)} className="inline-flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
         <Plus className="mr-2 h-4 w-4" />
         Add Endpoint
       </button>
-      <button className="inline-flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <button onClick={() => alert("Deploying Gateway config to Edge...")} className="inline-flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
         <Play className="mr-2 h-4 w-4" />
         Deploy
-      </button>
-      <button className="inline-flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-        <BookOpen className="mr-2 h-4 w-4" />
-        View Docs
       </button>
     </>
   );
@@ -117,6 +118,16 @@ export default function ApiWorkspaceLayout({
       metrics={topMetrics}
     >
       {children}
+      <AddEndpointDialog 
+        isOpen={isAddEndpointOpen}
+        onClose={() => setIsAddEndpointOpen(false)}
+        apiVersionId={api.versionId}
+        versionName={api.version}
+        apiClientCreate={(data) => apisClient.createEndpoint(id, data)}
+        onSuccess={() => {
+          // You could trigger a re-fetch here if needed
+        }}
+      />
     </WorkspaceLayout>
   );
 }

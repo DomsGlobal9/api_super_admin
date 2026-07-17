@@ -94,7 +94,7 @@ export default function DashboardPage() {
               value={data.requestsToday.toLocaleString()}
               icon={Activity}
               trend={{ value: 12.5, isPositive: true }}
-              description="from previous day"
+              description={`All-time: ${data.totalAllTimeRequests.toLocaleString()} | Successes: ${data.totalAllTimeSuccess.toLocaleString()}`}
             />
             <StatCard
               title="Active Clients"

@@ -56,71 +56,52 @@ export function EndpointDrawer({ isOpen, onClose, endpoint }: EndpointDrawerProp
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto">
           <div className="border-b border-gray-200 dark:border-gray-800 px-6">
-            <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-              {['General', 'Gateway', 'Authentication', 'Rate Limits', 'Usage', 'Logs', 'Documentation'].map((tab) => (
-                <button
-                  key={tab}
-                  className={cn(
-                    tab === 'Gateway'
-                      ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300',
-                    'whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium'
-                  )}
-                >
-                  {tab}
-                </button>
-              ))}
-            </nav>
+              <button
+                className="border-indigo-500 text-indigo-600 dark:text-indigo-400 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium"
+              >
+                General
+              </button>
           </div>
 
           <div className="p-6 space-y-6">
-            {/* Gateway Content Mockup */}
+            {/* General Content */}
             <div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Gateway Override Configuration</h3>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Endpoint Configuration</h3>
               <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Backend Target Path</dt>
                   <dd className="mt-1 text-sm font-mono text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-800">
-                    {endpoint.backendPath || '/internal/v2/generate'}
+                    {endpoint.backendPath ? endpoint.backendPath : <span className="text-gray-400 italic">Inherited from API Gateway</span>}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Timeout (ms)</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{endpoint.timeoutMs || 120000}</dd>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{endpoint.timeoutMs || 30000}</dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Payload Limit</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{endpoint.payloadLimit || '10 MB'}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Circuit Breaker</dt>
-                  <dd className="mt-1 text-sm text-green-600 dark:text-green-400 font-medium">Active (Inherited)</dd>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                    {endpoint.payloadLimit ? `${Math.round(endpoint.payloadLimit / 1024 / 1024)} MB` : 'Default'}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Visibility</dt>
-                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">Public</dd>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100 capitalize">{endpoint.visibility || 'Public'}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Requests</dt>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100">{endpoint.requests || 0}</dd>
                 </div>
               </dl>
             </div>
             
-            <hr className="border-gray-200 dark:border-gray-800" />
-            
-            <div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Warning</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Any overrides applied here will bypass the parent API's default Gateway configuration.
-              </p>
-            </div>
           </div>
         </div>
 
         {/* Footer Actions */}
         <div className="border-t border-gray-200 dark:border-gray-800 p-4 bg-gray-50 dark:bg-gray-900 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700">
-            Cancel
-          </button>
-          <button className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            Save Overrides
+            Close Panel
           </button>
         </div>
       </div>

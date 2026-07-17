@@ -1,9 +1,10 @@
 import { BaseRepository } from '@/lib/core/repository';
 import { CreateApiDTO, UpdateApiDTO, ApiQueryDTO } from './api.schema';
 import { Prisma } from '@prisma/client';
+import { getDateBoundaries } from '@/lib/date-utils';
 
 export class ApiRepository extends BaseRepository<any> {
-  async findMany(query: ApiQueryDTO) {
+  async findMany(query: ApiQueryDTO, tzOffset?: number) {
     const { page, pageSize, search, moduleId } = query;
     const skip = (page - 1) * pageSize;
 
@@ -17,6 +18,8 @@ export class ApiRepository extends BaseRepository<any> {
         ],
       }),
     };
+
+    const { todayStart } = getDateBoundaries(tzOffset);
 
     const [total, apis] = await Promise.all([
       this.db.microservice.count({ where }),
@@ -34,7 +37,7 @@ export class ApiRepository extends BaseRepository<any> {
           _count: {
             select: { 
               requestLogs: {
-                where: { timestamp: { gte: new Date(new Date().setHours(0,0,0,0)) } }
+                where: { timestamp: { gte: todayStart } }
               }, 
               clientAccess: true 
             }
@@ -47,7 +50,8 @@ export class ApiRepository extends BaseRepository<any> {
     return { total, apis };
   }
 
-  async findById(id: string) {
+  async findById(id: string, tzOffset?: number) {
+    const { todayStart } = getDateBoundaries(tzOffset);
     return this.db.microservice.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -68,7 +72,7 @@ export class ApiRepository extends BaseRepository<any> {
         _count: {
           select: { 
             requestLogs: {
-              where: { timestamp: { gte: new Date(new Date().setHours(0,0,0,0)) } }
+              where: { timestamp: { gte: todayStart } }
             } 
           }
         }
@@ -90,9 +94,14 @@ export class ApiRepository extends BaseRepository<any> {
             internalSecret: internalSecret || null,
             status: 'ACTIVE'
           }
+        },
+        apiVersions: {
+          create: {
+            version: 'v1'
+          }
         }
       },
-      include: { module: true, environments: true },
+      include: { module: true, environments: true, apiVersions: true },
     });
   }
 
@@ -133,7 +142,7 @@ export class ApiRepository extends BaseRepository<any> {
   }
 
   async getVersionsWithEndpoints(microserviceId: string) {
-    return this.db.apiVersion.findMany({
+    const versions = await this.db.apiVersion.findMany({
       where: { microserviceId },
       include: {
         endpoints: {
@@ -142,6 +151,23 @@ export class ApiRepository extends BaseRepository<any> {
       },
       orderBy: { createdAt: 'desc' }
     });
+
+    const requestCounts = await this.db.requestLog.groupBy({
+      by: ['endpoint', 'method'],
+      where: { microserviceId },
+      _count: { id: true }
+    });
+
+    return versions.map(v => ({
+      ...v,
+      endpoints: v.endpoints.map(ep => {
+        const matchingLog = requestCounts.find(log => log.endpoint === ep.path && log.method === ep.method);
+        return {
+          ...ep,
+          requests: matchingLog ? matchingLog._count.id : 0
+        };
+      })
+    }));
   }
 
   async createEndpoint(data: import('./api.schema').CreateEndpointDTO) {
@@ -158,6 +184,21 @@ export class ApiRepository extends BaseRepository<any> {
         payloadLimit: data.payloadLimit,
       }
     });
+  }
+
+  async getTopEndpoints(microserviceId: string, limit = 5) {
+    const top = await this.db.requestLog.groupBy({
+      by: ['endpoint', 'method'],
+      where: { microserviceId },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: limit
+    });
+    return top.map(t => ({
+      endpoint: t.endpoint,
+      method: t.method,
+      requests: t._count.id
+    }));
   }
 }
 

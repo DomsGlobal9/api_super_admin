@@ -14,6 +14,8 @@ export class ApiMapper {
       moduleName: api.module?.name,
       createdAt: api.createdAt,
       updatedAt: api.updatedAt,
+      documentation: (api as any).documentation,
+      openapiSpecUrl: (api as any).openapiSpecUrl,
       activeVersions: (api as any).apiVersions?.length || 0,
       totalEndpoints: (api as any).apiVersions?.reduce((acc: number, v: any) => acc + (v._count?.endpoints || 0), 0) || 0,
       requestsToday: (api as any)._count?.requestLogs || 0,

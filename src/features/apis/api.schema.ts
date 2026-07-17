@@ -10,7 +10,10 @@ export const CreateApiSchema = z.object({
   internalSecret: z.string().optional(),
 });
 
-export const UpdateApiSchema = CreateApiSchema.partial();
+export const UpdateApiSchema = CreateApiSchema.partial().extend({
+  documentation: z.string().optional().nullable(),
+  openapiSpecUrl: z.string().url().optional().nullable(),
+});
 
 export const ApiQuerySchema = z.object({
   page: z.coerce.number().min(1).optional().default(1),

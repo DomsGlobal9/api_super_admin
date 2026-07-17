@@ -5,8 +5,8 @@ import { NotFoundError, ConflictError } from '@/lib/errors/errors';
 export class ClientService {
   constructor(private readonly repo: ClientRepository = defaultClientRepository) {}
 
-  async getClients(query: ClientQueryDTO) {
-    return this.repo.findMany(query);
+  async getClients(query: ClientQueryDTO, tzOffset?: number) {
+    return this.repo.findMany(query, tzOffset);
   }
 
   async getClientById(id: string) {

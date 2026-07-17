@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest } from 'next/server';
 import { dashboardService } from '@/features/dashboard/dashboard.service';
 import { ok, serverError, unauthorized } from '@/lib/api/response';

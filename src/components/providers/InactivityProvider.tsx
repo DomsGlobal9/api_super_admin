@@ -27,8 +27,8 @@ export function InactivityProvider({ children }: { children: React.ReactNode }) 
     // Initialize timer
     resetTimer();
 
-    // Events to track activity
-    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+    // Events to track activity (including all mobile touch events)
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'touchmove', 'touchend', 'click'];
 
     // Throttle the event listeners to avoid excessive re-renders/CPU usage
     let throttleTimer = false;

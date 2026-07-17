@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { ok, unauthorized, notFound, serverError } from '@/lib/api/response';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/authOptions';
+import { getSpecificDateBoundaries } from '@/lib/date-utils';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -37,9 +38,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     if (daysFilter === 'specific' && specificDateFilter) {
-      const specificStart = new Date(specificDateFilter);
-      const specificEnd = new Date(specificStart);
-      specificEnd.setDate(specificEnd.getDate() + 1);
+      const tzOffset = req.headers.get('x-timezone-offset');
+      const { specificStart, specificEnd } = getSpecificDateBoundaries(
+        specificDateFilter, 
+        tzOffset ? parseInt(tzOffset, 10) : undefined
+      );
       where.timestamp = { gte: specificStart, lt: specificEnd };
     } else if (daysFilter && daysFilter !== 'specific') {
       const days = parseInt(daysFilter, 10);

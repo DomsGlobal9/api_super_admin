@@ -2,6 +2,7 @@ import { baseClient } from './client';
 
 export const apisClient = {
   list: (params?: Record<string, any>) => baseClient.get<any>('/apis', params),
+  getApiById: (id: string) => baseClient.get<any>(`/apis/${id}`),
   getOverview: (id: string) => baseClient.get<any>(`/apis/${id}/overview`),
   getUsage: (id: string, params?: Record<string, any>) => baseClient.get<any>(`/apis/${id}/usage`, params),
   getClients: (id: string, params?: Record<string, any>) => baseClient.get<any>(`/apis/${id}/clients`, params),

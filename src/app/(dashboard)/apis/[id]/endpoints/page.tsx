@@ -65,10 +65,6 @@ export default function ApiEndpointsPage() {
                 {v.status}
               </span>
             </div>
-            <button className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 flex items-center">
-              <Settings2 className="w-4 h-4 mr-1" />
-              Version Settings
-            </button>
           </div>
 
           {/* Endpoints List */}
@@ -95,16 +91,12 @@ export default function ApiEndpointsPage() {
                     </div>
                     {api?.slug && (
                       <div className="flex items-center text-xs text-gray-400 dark:text-gray-500 ml-[80px]">
-                        <span className="font-mono">https://api.scaleeasy.com/gateway/{v.version}/{api.slug}{ep.path}</span>
+                        <span className="font-mono">https://api.scaleeasy.com/gateway/{api.slug}{ep.path}</span>
                       </div>
                     )}
                   </div>
                   
                   <div className="flex items-center gap-8 text-sm text-gray-500 dark:text-gray-400">
-                    <div className="hidden md:flex items-center gap-1.5">
-                      <Server className="w-4 h-4" />
-                      <span>{ep.timeoutMs ? ep.timeoutMs / 1000 : 30}s timeout</span>
-                    </div>
                     <div className="hidden lg:block w-24 text-right">
                       {ep.requests || 0} reqs
                     </div>

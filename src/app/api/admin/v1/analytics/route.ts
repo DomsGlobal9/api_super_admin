@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest } from 'next/server';
 import { analyticsService } from '@/features/analytics/analytics.service';
 import { ok, serverError, badRequest, unauthorized } from '@/lib/api/response';
@@ -24,7 +25,11 @@ export async function GET(req: NextRequest) {
       return badRequest('VALIDATION_ERROR', 'Invalid query parameters', parsedQuery.error.format());
     }
 
-    const analytics = await analyticsService.getGlobalAnalytics(parsedQuery.data.timeframe);
+    const tzOffset = req.headers.get('x-timezone-offset');
+    const analytics = await analyticsService.getGlobalAnalytics(
+      parsedQuery.data.timeframe,
+      tzOffset ? parseInt(tzOffset, 10) : undefined
+    );
 
     return ok(analytics);
   } catch (error: any) {

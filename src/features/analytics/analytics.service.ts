@@ -3,7 +3,7 @@ import { MetricsService, metricsService as defaultMetricsService } from '../plat
 export class AnalyticsService {
   constructor(private readonly metrics: MetricsService = defaultMetricsService) {}
 
-  async getGlobalAnalytics(timeframe: string = '30d') {
+  async getGlobalAnalytics(timeframe: string = '30d', tzOffset?: number) {
     const daysMap: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
     const days = daysMap[timeframe] || 30;
 
@@ -16,7 +16,7 @@ export class AnalyticsService {
       this.metrics.getTopClients(),
       this.metrics.getTopApis(),
       this.metrics.getTopEndpoints(),
-      this.metrics.getHistoricalTrafficTrends(days)
+      this.metrics.getHistoricalTrafficTrends(days, tzOffset)
     ]);
 
     return {

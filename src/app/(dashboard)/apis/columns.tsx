@@ -50,7 +50,7 @@ export const columns: ColumnDef<ApiListDTO>[] = [
   },
   {
     accessorKey: 'requestsToday',
-    header: 'Usage (24h)',
+    header: 'Requests Today',
     cell: ({ row }) => <span className="font-medium">{row.getValue<number>('requestsToday').toLocaleString()}</span>,
   },
   {

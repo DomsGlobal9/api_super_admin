@@ -19,6 +19,7 @@ export default function ApiUsagePage({ params }: { params: Promise<{ id: string 
   const [filters, setFilters] = useState({
     status: '',
     days: '7',
+    specificDate: '',
     endpoint: '',
     apiKeyId: '',
     clientId: ''
@@ -106,7 +107,9 @@ export default function ApiUsagePage({ params }: { params: Promise<{ id: string 
     ? ((usage.success / usage.totalRequests) * 100).toFixed(1) 
     : "100.0";
 
-  const timeTitle = filters.days 
+  const timeTitle = filters.days === 'specific' && filters.specificDate
+    ? `(On ${filters.specificDate})`
+    : filters.days 
     ? `(Last ${filters.days === '1' ? '24 Hours' : filters.days + ' Days'})` 
     : '(All Time)';
 
@@ -150,13 +153,15 @@ export default function ApiUsagePage({ params }: { params: Promise<{ id: string 
           <div className="mt-4 flex flex-col sm:flex-row flex-wrap gap-4">
             
             {/* Date Filter */}
-            <div className="relative group flex-1 min-w-[150px]">
+            <div className="relative group flex-1 min-w-[200px]">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Calendar className="h-4 w-4 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
               </div>
               <select
-                value={filters.days}
-                onChange={(e) => setFilters({ ...filters, days: e.target.value })}
+                value={filters.days === 'specific' ? '' : filters.days}
+                onChange={(e) => {
+                  setFilters({ ...filters, days: e.target.value, specificDate: '' });
+                }}
                 className="block w-full pl-10 pr-10 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 appearance-none transition-all shadow-sm hover:border-gray-300 dark:hover:border-gray-700"
               >
                 <option value="1">Last 24 Hours</option>
@@ -167,6 +172,17 @@ export default function ApiUsagePage({ params }: { params: Promise<{ id: string 
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                 <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
+            </div>
+            
+            {/* Specific Date Picker */}
+            <div className="relative group flex-1 min-w-[150px]">
+              <input
+                type="date"
+                value={filters.specificDate}
+                onChange={(e) => setFilters({ ...filters, specificDate: e.target.value, days: e.target.value ? 'specific' : '7' })}
+                title="Select a specific date to filter"
+                className="block w-full px-4 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-sm hover:border-gray-300 dark:hover:border-gray-700"
+              />
             </div>
             
             {/* Status Filter */}

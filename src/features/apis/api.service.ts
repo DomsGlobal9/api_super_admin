@@ -7,8 +7,8 @@ import { ApiOverviewDTO } from './api.types';
 export class ApiService {
   constructor(private readonly repo: ApiRepository = defaultApiRepository) {}
 
-  async getApis(query: ApiQueryDTO) {
-    const result = await this.repo.findMany(query);
+  async getApis(query: ApiQueryDTO, tzOffset?: number) {
+    const result = await this.repo.findMany(query, tzOffset);
     return {
       total: result.total,
       apis: ApiMapper.toDTOList(result.apis),
@@ -29,10 +29,14 @@ export class ApiService {
       throw new NotFoundError('API not found');
     }
 
+    const topEndpoints = await this.repo.getTopEndpoints(id, 5);
+    console.log('Top Endpoints from DB:', topEndpoints);
+
     return {
       api: ApiMapper.toDTO(api),
       versions: api.apiVersions || [],
       clients: api.clientAccess?.map((ca) => ca.client) || [],
+      topEndpoints,
       usage: {}, // Placeholder for usage service aggregation
       gateway: {}, // Placeholder for gateway config
       health: {}, // Placeholder for health

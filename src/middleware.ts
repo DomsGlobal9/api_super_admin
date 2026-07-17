@@ -18,5 +18,5 @@ export default withAuth(
 
 export const config = {
   // Protect everything except API routes (they handle their own session check), login page, and public assets
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|login).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|favicon.ico|login).*)'],
 };

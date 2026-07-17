@@ -12,4 +12,6 @@ export interface DashboardDTO {
   averageLatencyMs: number;
   expiringApiKeysCount: number;
   recentAlerts: any[]; // To be populated later
+  totalAllTimeSuccess: number;
+  totalAllTimeRequests: number;
 }

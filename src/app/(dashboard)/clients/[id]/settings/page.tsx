@@ -21,10 +21,15 @@ export default function ClientSettingsPage({
     contactName: '',
     email: '',
     phone: '',
+    websiteUrl: '',
     notes: ''
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Danger zone states
+  const [confirmTextSuspend, setConfirmTextSuspend] = useState('');
+  const [confirmTextDelete, setConfirmTextDelete] = useState('');
 
   // Danger zone states
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -41,6 +46,7 @@ export default function ClientSettingsPage({
         contactName: res.contactName || '',
         email: res.email || '',
         phone: res.phone || '',
+        websiteUrl: res.websiteUrl || '',
         notes: res.notes || ''
       });
     } catch (err) {
@@ -80,6 +86,7 @@ export default function ClientSettingsPage({
       contactName: client.contactName || '',
       email: client.email || '',
       phone: client.phone || '',
+      websiteUrl: client.websiteUrl || '',
       notes: client.notes || ''
     });
     setIsEditing(false);
@@ -96,6 +103,7 @@ export default function ClientSettingsPage({
     } finally {
       setIsSuspending(false);
       setIsSuspendModalOpen(false);
+      setConfirmTextSuspend('');
     }
   };
 
@@ -109,6 +117,7 @@ export default function ClientSettingsPage({
     } finally {
       setIsDeleting(false);
       setIsDeleteModalOpen(false);
+      setConfirmTextDelete('');
     }
   };
 
@@ -193,6 +202,26 @@ export default function ClientSettingsPage({
                 title="Phone number must be exactly 10 digits"
                 className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-900/50" 
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Company Website</label>
+              {!isEditing && formData.websiteUrl ? (
+                <div className="flex h-10 w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900/50 text-gray-500 items-center">
+                  <a href={formData.websiteUrl.startsWith('http') ? formData.websiteUrl : `https://${formData.websiteUrl}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 hover:underline truncate">
+                    {formData.websiteUrl}
+                  </a>
+                </div>
+              ) : (
+                <input 
+                  type="url" 
+                  name="websiteUrl" 
+                  value={formData.websiteUrl} 
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                  placeholder="https://example.com"
+                  className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-900/50 focus:border-indigo-500 focus:ring-indigo-500" 
+                />
+              )}
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Internal Admin Notes</label>
@@ -302,9 +331,25 @@ export default function ClientSettingsPage({
               <p>This cannot be undone.</p>
             </div>
             
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Please type <strong className="text-gray-900 dark:text-white select-none">{client?.companyName}</strong> to confirm.
+              </label>
+              <input
+                type="text"
+                value={confirmTextDelete}
+                onChange={(e) => setConfirmTextDelete(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                placeholder={client?.companyName}
+              />
+            </div>
+            
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setIsDeleteModalOpen(false)}
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setConfirmTextDelete('');
+                }}
                 disabled={isDeleting}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700"
               >
@@ -312,7 +357,7 @@ export default function ClientSettingsPage({
               </button>
               <button
                 onClick={handleHardDelete}
-                disabled={isDeleting}
+                disabled={isDeleting || confirmTextDelete !== client?.companyName}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 flex items-center"
               >
                 {isDeleting ? 'Deleting...' : 'Yes, erase forever'}
@@ -342,9 +387,25 @@ export default function ClientSettingsPage({
               )}
             </div>
             
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Please type <strong className="text-gray-900 dark:text-white select-none">{client?.companyName}</strong> to confirm.
+              </label>
+              <input
+                type="text"
+                value={confirmTextSuspend}
+                onChange={(e) => setConfirmTextSuspend(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                placeholder={client?.companyName}
+              />
+            </div>
+            
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setIsSuspendModalOpen(false)}
+                onClick={() => {
+                  setIsSuspendModalOpen(false);
+                  setConfirmTextSuspend('');
+                }}
                 disabled={isSuspending}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-700"
               >
@@ -352,7 +413,7 @@ export default function ClientSettingsPage({
               </button>
               <button
                 onClick={handleSuspend}
-                disabled={isSuspending}
+                disabled={isSuspending || confirmTextSuspend !== client?.companyName}
                 className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 flex items-center ${
                   isSuspended 
                     ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 

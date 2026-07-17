@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { ok, unauthorized, notFound, serverError } from '@/lib/api/response';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/authOptions';
+import { getDateBoundaries, getSpecificDateBoundaries } from '@/lib/date-utils';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -16,12 +17,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const api = await prisma.microservice.findUnique({ where: { id, deletedAt: null } });
     if (!api) return notFound('API_NOT_FOUND', 'API not found');
 
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const tzOffset = req.headers.get('x-timezone-offset');
+    const { todayStart, monthStart } = getDateBoundaries(tzOffset ? parseInt(tzOffset, 10) : undefined);
 
     const statusFilter = req.nextUrl.searchParams.get('status');
     const daysFilter = req.nextUrl.searchParams.get('days');
+    const specificDateFilter = req.nextUrl.searchParams.get('specificDate');
     const endpointFilter = req.nextUrl.searchParams.get('endpoint');
     const apiKeyIdFilter = req.nextUrl.searchParams.get('apiKeyId');
     const clientIdFilter = req.nextUrl.searchParams.get('clientId');
@@ -40,7 +41,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       conditions.push(Prisma.sql`"endpoint" ILIKE ${'%' + endpointFilter + '%'}`);
     }
 
-    if (daysFilter) {
+    if (daysFilter === 'specific' && specificDateFilter) {
+      const { specificStart, specificEnd } = getSpecificDateBoundaries(specificDateFilter, tzOffset ? parseInt(tzOffset, 10) : undefined);
+      conditions.push(Prisma.sql`"timestamp" >= ${specificStart} AND "timestamp" < ${specificEnd}`);
+    } else if (daysFilter) {
       const days = parseInt(daysFilter, 10);
       if (!isNaN(days) && days > 0) {
         const date = new Date();

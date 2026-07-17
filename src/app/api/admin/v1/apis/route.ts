@@ -24,7 +24,11 @@ export async function GET(req: NextRequest) {
       return badRequest('VALIDATION_ERROR', 'Invalid query parameters', parsedQuery.error.format());
     }
 
-    const result = await apiService.getApis(parsedQuery.data);
+    const tzOffset = req.headers.get('x-timezone-offset');
+    const result = await apiService.getApis(
+      parsedQuery.data, 
+      tzOffset ? parseInt(tzOffset, 10) : undefined
+    );
 
     return ok(result.apis, {
       page: parsedQuery.data.page,

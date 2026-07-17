@@ -12,7 +12,7 @@ export class DashboardService {
   async getDashboardOverview(): Promise<DashboardDTO> {
     const results = await Promise.allSettled([
       this.metrics.getActiveClientsCount(),
-      this.metrics.getRequestsToday(),
+      this.metrics.getRequests24h(),
       this.metrics.getFailedRequestsToday(),
       this.metrics.getExpiringApiKeysCount(),
       this.metrics.getRPM(),
@@ -21,7 +21,9 @@ export class DashboardService {
       this.health.getRedisStatus(),
       this.health.getDatabaseStatus(),
       this.health.getCircuitBreakerStatus(),
-      this.alerts.getRecentAlerts()
+      this.alerts.getRecentAlerts(),
+      this.metrics.getAllTimeSuccesses(),
+      this.metrics.getAllTimeRequests()
     ]);
 
     const getValue = <T>(result: PromiseSettledResult<T>, fallback: T): T => {
@@ -41,6 +43,8 @@ export class DashboardService {
     const databaseStatus = getValue(results[8], 'DOWN');
     const circuitBreakers = getValue(results[9], { open: 0, halfOpen: 0 });
     const recentAlerts = getValue(results[10], []);
+    const totalAllTimeSuccess = getValue(results[11], 0);
+    const totalAllTimeRequests = getValue(results[12], 0);
 
     return {
       activeClients,
@@ -55,7 +59,9 @@ export class DashboardService {
       failedRequestsToday,
       averageLatencyMs,
       expiringApiKeysCount,
-      recentAlerts
+      recentAlerts,
+      totalAllTimeSuccess,
+      totalAllTimeRequests
     };
   }
 }

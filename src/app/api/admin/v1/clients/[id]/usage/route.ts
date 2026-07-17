@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { ok, unauthorized, notFound, serverError } from '@/lib/api/response';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/authOptions';
+import { getDateBoundaries, getSpecificDateBoundaries } from '@/lib/date-utils';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -16,9 +17,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const client = await prisma.client.findUnique({ where: { id, deletedAt: null } });
     if (!client) return notFound('CLIENT_NOT_FOUND', 'Client not found');
 
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const tzOffset = req.headers.get('x-timezone-offset');
+    const { todayStart, monthStart } = getDateBoundaries(tzOffset ? parseInt(tzOffset, 10) : undefined);
 
     const statusFilter = req.nextUrl.searchParams.get('status');
     const daysFilter = req.nextUrl.searchParams.get('days');
@@ -37,9 +37,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     if (daysFilter === 'specific' && specificDateFilter) {
-      const specificStart = new Date(specificDateFilter);
-      const specificEnd = new Date(specificStart);
-      specificEnd.setDate(specificEnd.getDate() + 1);
+      const { specificStart, specificEnd } = getSpecificDateBoundaries(
+        specificDateFilter, 
+        tzOffset ? parseInt(tzOffset, 10) : undefined
+      );
       conditions.push(Prisma.sql`"timestamp" >= ${specificStart} AND "timestamp" < ${specificEnd}`);
     } else if (daysFilter && daysFilter !== 'specific') {
       const days = parseInt(daysFilter, 10);

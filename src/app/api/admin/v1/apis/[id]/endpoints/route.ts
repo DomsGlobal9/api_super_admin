@@ -36,6 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const parsedBody = CreateEndpointSchema.safeParse(body);
 
     if (!parsedBody.success) {
+      console.error('Validation Error Details:', JSON.stringify(parsedBody.error.format(), null, 2));
       return badRequest('VALIDATION_ERROR', 'Invalid request body', parsedBody.error.format());
     }
 

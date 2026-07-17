@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -222,7 +223,7 @@ export function Sidebar() {
         )}
       >
         <div className="flex h-16 items-center justify-between px-6 border-b border-gray-200 dark:border-gray-800">
-          <span className="text-xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400">ScaleEasy</span>
+          <img src="/scaleezy-png.png" alt="ScaleEasy" className="w-48 h-auto object-contain" />
           <button 
             className="lg:hidden p-2 -mr-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             onClick={closeSidebar}

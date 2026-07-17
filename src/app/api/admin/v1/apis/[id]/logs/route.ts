@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { ok, unauthorized, notFound, serverError } from '@/lib/api/response';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/authOptions';
+import { getSpecificDateBoundaries } from '@/lib/date-utils';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -21,8 +22,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const api = await prisma.microservice.findUnique({ where: { id, deletedAt: null } });
     if (!api) return notFound('API_NOT_FOUND', 'API not found');
 
+    const tzOffset = req.headers.get('x-timezone-offset');
     const statusFilter = searchParams.get('status');
     const daysFilter = searchParams.get('days');
+    const specificDateFilter = searchParams.get('specificDate');
     const endpointFilter = searchParams.get('endpoint');
     const apiKeyIdFilter = searchParams.get('apiKeyId');
     const clientIdFilter = searchParams.get('clientId');
@@ -40,7 +43,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       if (statusFilter === 'server_error') where.statusCode = { gte: 500 };
     }
 
-    if (daysFilter) {
+    if (daysFilter === 'specific' && specificDateFilter) {
+      const { specificStart, specificEnd } = getSpecificDateBoundaries(specificDateFilter, tzOffset ? parseInt(tzOffset, 10) : undefined);
+      where.timestamp = { gte: specificStart, lt: specificEnd };
+    } else if (daysFilter) {
       const days = parseInt(daysFilter, 10);
       if (!isNaN(days) && days > 0) {
         const date = new Date();

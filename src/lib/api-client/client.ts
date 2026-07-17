@@ -2,6 +2,7 @@ export class ApiClient {
   private async fetch<T>(url: string, options: RequestInit = {}): Promise<T> {
     const defaultHeaders = {
       'Content-Type': 'application/json',
+      'x-timezone-offset': new Date().getTimezoneOffset().toString(),
     };
 
     const response = await fetch(`/api/admin/v1${url}`, {
