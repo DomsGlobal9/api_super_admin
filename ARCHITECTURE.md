@@ -1,44 +1,43 @@
 # Master Architecture Document: API Super Admin Platform
 
 ## 1. Executive Summary
-The **API Super Admin Platform** is a centralized, production-grade API Gateway and Identity/Access Management system. It acts as the single secure entry point for all client requests, routing them to backend microservices (starting with `TryOn2Buy`). 
+The **Scaleezy Super Admin Platform** is a centralized, production-grade API Gateway and Identity/Access Management system. It acts as the single secure entry point for all client requests, routing them to downstream backend microservices (e.g., TryOn2Buy). 
 
-This platform is custom-built on **Next.js** and deployed on **Vercel** using highly optimized Node.js Serverless Functions.
+This platform is custom-built on **Next.js 15 (App Router)** and deployed natively on **Render** (Node.js Container), ensuring long-running processes (like 90-second AI generation tasks) are natively supported without strict serverless timeout limits.
 
 ---
 
 ## 2. Technology Stack
-*   **Framework:** Next.js (App Router, TypeScript)
-*   **Deployment & Infrastructure:** Vercel (Node.js Serverless Functions)
-*   **Database:** PostgreSQL (Vercel Postgres / Neon)
-*   **ORM:** Prisma
-*   **Caching & Rate Limiting:** Vercel KV (Upstash Redis)
+*   **Framework:** Next.js (App Router, TypeScript, Turbopack)
+*   **Deployment:** Render (Node.js runtime)
+*   **Database:** PostgreSQL (Supabase Connection Pooler)
+*   **ORM:** Prisma (with PostgreSQL native driver)
+*   **Caching & Rate Limiting:** Upstash Redis KV
 *   **Frontend UI:** React, Tailwind CSS, Shadcn UI
-*   **Payments & Billing:** Stripe API
+*   **Observability:** Built-in dynamic Auto-Polling Engine for real-time dashboard metrics.
 
 ---
 
 ## 3. Project Folder Architecture
-Since this is a unified full-stack Next.js application, the project structure is organized as follows:
+The project structure is organized as a unified full-stack application:
 
 ```text
 d:\villy\api-super-admin\
 ├── src/
 │   ├── app/
-│   │   ├── api/                   # The API Gateway (Node.js API Routes)
+│   │   ├── api/                   # API Routes
 │   │   │   ├── gateway/           # Intercepts all client API requests
-│   │   │   └── webhooks/          # Handles async callbacks from microservices
-│   │   ├── dashboard/             # Super Admin Frontend UI
-│   │   │   ├── clients/
-│   │   │   ├── modules/
-│   │   │   └── analytics/
+│   │   │   │   └── [microserviceSlug]/[[...path]]/route.ts
+│   │   │   └── admin/             # Internal APIs for the Dashboard (e.g., /usage, /logs)
+│   │   ├── (dashboard)/           # Super Admin Frontend UI
+│   │   │   ├── clients/           # Client overview, usage, and logs
+│   │   │   └── page.tsx           # Real-time Auto-Polling dashboards
 │   │   └── layout.tsx
-│   ├── components/                # Reusable UI components (Tailwind/Shadcn)
+│   ├── components/                # Reusable UI components
 │   ├── lib/
-│   │   ├── prisma.ts              # Database connection
-│   │   ├── redis.ts               # Upstash KV connection
-│   │   └── stripe.ts              # Billing integration
-│   └── middleware.ts              # Next.js Middleware for Dashboard Auth
+│   │   ├── gateway/proxy.ts       # Core reverse-proxy engine (CORS, timeouts)
+│   │   ├── auth/api-key.ts        # Redis-backed API Key validation
+│   │   └── prisma.ts              # Database connection
 ├── prisma/
 │   └── schema.prisma              # Database schema definitions
 └── .env                           # Environment variables
@@ -48,67 +47,54 @@ d:\villy\api-super-admin\
 
 ## 4. Core Modules
 
-### 4.1 API Gateway (Node.js Serverless Routing)
-The single entry point for all client requests. Runs on standard Node.js Serverless functions to support full DB drivers and longer timeouts.
-*   **Authentication:** Validates API Keys against Redis in <5ms.
-*   **Security (CORS):** Validates the `Origin` or `Referer` against the client's whitelisted domains to prevent API key theft.
-*   **Authorization:** Validates Client status, Subscription tier, and Module Access.
-*   **Routing:** Forwards the validated payload to the appropriate microservice (e.g., TryOn backend).
-*   **Rate Limiting:** Enforces quotas (per minute/day) using Redis sliding windows.
+### 4.1 API Gateway Proxy Engine
+The single entry point for all external client requests.
+*   **Authentication:** Validates API Keys against Redis KV with fallback to PostgreSQL.
+*   **Security (CORS):** Fully handles `OPTIONS` preflight requests, dynamically issuing `Access-Control-Allow-Origin` headers to whitelisted client domains (e.g., Shopify storefronts).
+*   **Timeout Management:** Dynamically pulls `timeoutMs` (e.g., 90 seconds) from the database to ensure long-running AI requests aren't prematurely terminated by the Gateway.
+*   **Routing:** Seamlessly proxies requests (and query parameters) to the downstream microservice (e.g., `https://api.your-backend.com`).
 
 ### 4.2 Super Admin Dashboard
-The internal control panel for operations.
-*   **Client Management:** Create, update, suspend clients.
-*   **API Key Management:** Generate, revoke, rotate keys, and bind allowed domains.
-*   **Module Management:** Register new microservices (Name, Target URL, Health Endpoint) dynamically.
-*   **Access Management:** Grant/Revoke specific microservice access to clients.
-
-*Note: The platform operates with a single unified **Super Admin** role to minimize complexity. Complex RBAC and client-facing Developer Portals are intentionally excluded from this architecture.*
-
-### 4.3 Analytics & Request Logging
-*   Every request is logged asynchronously (Client, Module, Endpoint, Status Code, Latency, IP).
-*   Dashboard displays Total Requests, Success/Failure rates, and top clients.
-
-### 4.4 Webhooks & Async Processing
-*   A Webhook Dispatcher module that reliably sends POST requests to client-configured URLs when asynchronous jobs finish.
-
-### 4.5 Billing & Subscriptions
-*   Stripe integration for tracking API usage and generating automated invoices.
+The internal control panel with a **Real-Time Auto-Polling Engine**.
+*   **Client Management:** Manage client identities and their active API keys.
+*   **Real-Time Usage:** The dashboard continuously polls the database every 3 seconds to update total requests, success rates, and average latency on-the-fly.
+*   **Dynamic Filtering:** SQL aggregations dynamically filter logs and metrics based on Time (Last 7 Days), API Key, Endpoint, or HTTP Status.
+*   **Audit Logging:** Tracks every Gateway request through its lifecycle (`STARTED`, `COMPLETED`, `FAILED`, `CANCELLED`).
 
 ---
 
-## 6. Database Design (Prisma Schema)
+## 5. Database Design (Prisma Schema)
 
-Core tables required for the platform:
+Core models required for the platform:
 
-*   **`clients`**: id, company_name, email, status, stripe_customer_id, created_at
-*   **`users`**: id, email, password_hash (For internal Super Admins only)
-*   **`api_keys`**: id, client_id, key_hash, allowed_domains, expires_at
-*   **`modules`**: id, name, target_url, status, health_endpoint
-*   **`client_modules`**: client_id, module_id (Join table for access control)
-*   **`request_logs`**: id, client_id, module_id, method, latency_ms, status_code, timestamp
-*   **`subscriptions`**: id, client_id, stripe_plan_id, status
+*   **`Client`**: Represents a B2B customer (id, name, status).
+*   **`ApiKey`**: Bound to a Client (id, keyHash, status, requestCount).
+*   **`Microservice`**: A registered downstream backend (e.g., "TryOn2Buy").
+*   **`MicroserviceEnvironment`**: The actual target URLs and timeout configurations (id, environment, targetUrl, timeoutMs).
+*   **`RequestLog`**: The system of record for observability (id, apiKeyId, statusCode, totalLatencyMs, endpoint).
 
 ---
 
-## 7. Request Processing Flow (The Lifecycle)
+## 6. Request Processing Flow (The Lifecycle)
 
-1. **Client Request:** A client (e.g., Shopify widget) calls `POST api.villy.com/api/gateway/tryon`.
-2. **Gateway Interception:** The Next.js API Route catches the request.
-3. **Cache & Security Validation:** 
-   *   Reads API Key from headers.
-   *   Checks Redis KV for key validity and Rate Limits.
-   *   Validates `Origin` matches allowed domains.
-4. **Access Check:** Verifies the client is active and has permission for the `tryon` module.
-5. **Proxy / Route:** The API Route forwards the request to the TryOn backend URL.
-6. **Async Logging:** Once the response is received, the Gateway fires a background event to log the request in PostgreSQL.
-7. **Response:** Returns the result to the client.
+1. **Client Request:** A client website (e.g., Shopify) calls `POST https://your-gateway-url.com/api/gateway/[microservice-slug]/[endpoint]`.
+2. **Preflight (CORS):** The browser sends an `OPTIONS` request. The Gateway responds with `204 No Content` and full CORS headers.
+3. **Gateway Interception:** The `POST` request hits `src/app/api/gateway/[microserviceSlug]/[[...path]]/route.ts`.
+4. **Validation & Initial Log:** 
+   * Reads API Key from headers.
+   * Validates key via Upstash Redis.
+   * Creates a `RequestLog` in PostgreSQL with status `STARTED`.
+5. **Proxy / Route:** 
+   * Injects an internal `x-api-key` for the downstream service.
+   * Uses `AbortController` bound to the database's `timeoutMs` (e.g., 90s).
+   * Forwards the request to the TryOn backend.
+6. **Finalize Log:** Upon downstream response (or timeout), updates the PostgreSQL `RequestLog` with the final status code, latency, and success/failure state.
+7. **Response:** Streams the unmodified payload (e.g., Base64 images) back to the client.
 
 ---
 
-## 8. Non-Functional Requirements
+## 7. Non-Functional Requirements
 
-*   **High Performance:** Achieved via Next.js highly optimized Node.js API Routes.
-*   **High Availability & Auto-Scaling:** Handled natively by Vercel serverless infrastructure.
-*   **Single Codebase:** Frontend and Backend coexist cleanly.
-*   **Type Safety:** End-to-end TypeScript (from Prisma DB to React UI).
+*   **Long-Running Tasks:** Solved by migrating from Vercel Serverless (strict 15s/60s timeouts) to Render's Node.js container environment.
+*   **Real-Time Observability:** Solved via lightweight React `useEffect` polling and highly optimized Prisma raw SQL aggregations.
+*   **Zero UI Flicker:** Solved by decoupling loading states from the background auto-polling engine.

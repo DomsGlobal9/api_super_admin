@@ -49,12 +49,6 @@ const navigationGroups = [
         ]
       },
     ]
-  },
-  {
-    name: 'System',
-    items: [
-      { name: 'Settings', href: '/settings', icon: Settings },
-    ]
   }
 ];
 
@@ -255,6 +249,15 @@ export function Sidebar() {
             </div>
           ))}
         </nav>
+      </div>
+
+      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+        <NavItem 
+          item={{ name: 'Settings', href: '/settings', icon: Settings }} 
+          pathname={pathname} 
+          expandedItem={expandedItem}
+          setExpandedItem={setExpandedItem}
+        />
       </div>
       </div>
     </>

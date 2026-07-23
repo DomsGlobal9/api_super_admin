@@ -27,6 +27,11 @@ export default function RequestLogsPage() {
   const [filterApi, setFilterApi] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 15,
+  });
+
   useEffect(() => {
     async function loadFilters() {
       try {
@@ -81,17 +86,21 @@ export default function RequestLogsPage() {
 
     async function initializeAndPoll() {
       await loadLogs(false);
+    }
+
+    initializeAndPoll();
+    
+    // Smart Polling: Only auto-refresh if on Page 1
+    if (pagination.pageIndex === 0) {
       intervalId = setInterval(() => {
         loadLogs(true);
       }, 3000);
     }
 
-    initializeAndPoll();
-
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [filterClient, filterApi, filterStatus]);
+  }, [filterClient, filterApi, filterStatus, pagination.pageIndex]);
 
   const table = useReactTable({
     data,
@@ -99,19 +108,28 @@ export default function RequestLogsPage() {
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 15,
-      }
-    }
+    autoResetPageIndex: false,
+    state: {
+      pagination,
+    },
+    onPaginationChange: setPagination,
   });
 
   return (
     <div className="space-y-6">
-      <PageHeader 
-        title="Global Request Logs" 
-        description="Search, filter, and inspect detailed HTTP traces across all Gateway instances."
-      />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <PageHeader 
+          title="Global Request Logs" 
+          description="Search, filter, and inspect detailed HTTP traces across all Gateway instances."
+        />
+        <span className="text-xs font-medium px-3 py-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-full flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+          {pagination.pageIndex === 0 ? (
+            <><span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span> Live Polling Active</>
+          ) : (
+            <><span className="w-2 h-2 rounded-full bg-gray-400"></span> Polling Paused (Historical View)</>
+          )}
+        </span>
+      </div>
 
       <div className="bg-white dark:bg-gray-950 p-4 rounded-xl border border-gray-200 dark:border-gray-800 flex flex-wrap gap-4 items-center">
         <div className="flex items-center text-sm font-medium text-gray-500 mr-2">
@@ -153,7 +171,7 @@ export default function RequestLogsPage() {
         <div className="space-y-4">
           <DataTableToolbar table={table} searchKey="path" searchPlaceholder="Search by endpoint path (e.g. /v2/generate)..." />
           <div onClick={() => { if(data.length > 0) setSelectedLog(data[0]) }} className="cursor-pointer">
-            <DataTable columns={columns} data={table.getRowModel().rows.map(r => r.original)} />
+            <DataTable columns={columns} data={table.getPaginationRowModel().rows.map(r => r.original)} />
           </div>
           <DataTablePagination table={table} />
         </div>
