@@ -13,11 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ScaleEasy Super Admin",
+  title: "Scaleezy Super Admin",
   description: "Centralized API Management & Gateway Dashboard",
-  icons: {
-    icon: "/favicon.ico",
-  }
 };
 
 export default function RootLayout({
