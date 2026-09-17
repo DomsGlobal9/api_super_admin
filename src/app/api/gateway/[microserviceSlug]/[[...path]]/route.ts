@@ -117,6 +117,11 @@ export async function ANY(
     
     // Inject gateway headers into the final response
     const finalHeaders = new Headers(response.headers);
+    // Node's fetch automatically decompresses the body stream. If we leave these
+    // headers, the client will try to decompress an already uncompressed stream.
+    finalHeaders.delete('content-encoding');
+    finalHeaders.delete('content-length');
+    finalHeaders.delete('transfer-encoding');
     finalHeaders.set('X-Request-ID', requestId);
     finalHeaders.set('X-Gateway-Version', process.env.npm_package_version || '0.1.0'); 
     finalHeaders.set('X-Response-Time', `${Date.now() - startTime}ms`);
@@ -127,7 +132,8 @@ export async function ANY(
     finalHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     finalHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
 
-    // We use a new response object to attach our custom headers
+    // The one and only wrap of the backend body (see proxyRequest): a new response
+    // object to attach our custom headers.
     const finalResponse = new Response(response.body, {
       status: response.status,
       statusText: response.statusText,

@@ -62,22 +62,13 @@ export async function proxyRequest({
       duplex: 'half', 
     };
 
-    const response = await fetch(finalUrl, fetchOptions);
-    
-    const responseHeaders = new Headers(response.headers);
-    
-    // Node's fetch automatically decompresses the body stream. 
-    // If we leave these headers, the client (Postman/Browser) will try to decompress an already uncompressed stream.
-    responseHeaders.delete('content-encoding');
-    responseHeaders.delete('content-length');
-    responseHeaders.delete('transfer-encoding');
-
-    // We want to return the exact response downstream, including status and headers
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders,
-    });
+    // Returned as-is. The route handler wraps the body exactly once, with the final
+    // headers. Wrapping it here as well left an intermediate Response that nothing
+    // referenced while the route awaited the circuit breaker; when it was garbage
+    // collected, its body stream was cancelled, and the route's second wrap threw
+    // "Response body object should not be disturbed or locked" (28 gateway 500s in
+    // 7 days, about 1 request in 100 in a local reproduction; 0 in 3000 wrapped once).
+    return await fetch(finalUrl, fetchOptions);
   } catch (error: any) {
     if (error.name === 'AbortError') {
       if (abortSignal.aborted) {
