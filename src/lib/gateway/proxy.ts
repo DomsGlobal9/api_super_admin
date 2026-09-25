@@ -9,6 +9,8 @@ export interface ProxyOptions {
   requestId: string;
   environment: MicroserviceEnvironment;
   abortSignal: AbortSignal; // From the incoming client request
+  /** The tenant this request belongs to, as the gateway resolved it -- never as the caller claimed. */
+  clientId: string;
 }
 
 export async function proxyRequest({
@@ -18,6 +20,7 @@ export async function proxyRequest({
   requestId,
   environment,
   abortSignal,
+  clientId,
 }: ProxyOptions): Promise<Response> {
   // Construct the final downstream URL
   const baseUrl = targetUrl.endsWith('/') ? targetUrl.slice(0, -1) : targetUrl;
@@ -32,7 +35,32 @@ export async function proxyRequest({
   // Inject Gateway specific headers
   sanitizedHeaders.set('X-Request-ID', requestId);
   sanitizedHeaders.set('X-Forwarded-For', req.headers.get('x-forwarded-for') || 'unknown');
-  
+
+  /*
+   * Who is really calling, as WE resolved it from the API key -- never as the caller claimed.
+   *
+   * Downstream services key both the tenant and the spend budget off this header. The catalog
+   * service treats it as trusted because its own check runs after the internal service key:
+   * "only a caller holding the internal service key can set it". That was true of every caller
+   * except us -- sanitizeHeaders did not strip x-gateway-client-id, so a caller's own copy was
+   * forwarded verbatim, and we then attached the internal service key to the same request.
+   * Anyone with a valid API key could therefore be taken downstream for a different tenant, and
+   * spend that tenant's allowance under their name.
+   *
+   * So: set, not "set if missing", and AFTER sanitizeHeaders, so whatever arrived is overwritten.
+   *
+   * Setting it also makes downstream budgets meter per tenant rather than per whatever id happens
+   * to be in the body, which is what lets a caller send a distinct job id per request without each
+   * one getting its own fresh allowance.
+   */
+  if (!clientId || clientId === 'unknown') {
+    // Not reachable from the route, which resolves a real tenant before proxying. Refused rather
+    // than forwarded, because a header this trusted must not be able to say "unknown" --
+    // downstream that would become the budget bucket for every unattributed call.
+    throw new GatewayError('UNAUTHORIZED_API_KEY', 'Could not establish which client this request belongs to', 401);
+  }
+  sanitizedHeaders.set('x-gateway-client-id', clientId);
+
   // Inject the internal master key for the backend to authenticate
   if (environment.internalSecret) {
     sanitizedHeaders.set('x-api-key', environment.internalSecret);

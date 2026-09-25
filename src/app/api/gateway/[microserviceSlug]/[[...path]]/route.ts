@@ -102,6 +102,9 @@ export async function ANY(
       requestId,
       environment: route.environment,
       abortSignal: req.signal, // Pass Next.js request AbortSignal down to the proxy
+      // Resolved above from the authenticated API key. Sent on as x-gateway-client-id so
+      // downstream knows whose request this is without having to trust the body.
+      clientId: resolvedClient,
     });
     backendLatencyMs = Date.now() - proxyStartTime;
 
