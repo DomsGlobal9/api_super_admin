@@ -11,6 +11,14 @@
  *    work. Only the women's catalog paths are checked - those are the runs that
  *    are charged (catalogs and colour variants); the men's catalog, Design
  *    Studio and discovery are not charged yet.
+ *
+ *    Known and accepted: each request is checked on its own when it arrives, and a
+ *    run is recorded only when it is delivered (30-70 s later). Requests already in
+ *    flight when the limit is reached have all been admitted, so a month can end
+ *    over the limit by the runs that were running at that moment (tested: two racing
+ *    one paisa below the limit are both delivered; the next is refused). A
+ *    reservation per run would close this; not done, as the overshoot is bounded by
+ *    the runs in flight and every run is still billed at its own price.
  */
 import { MicroserviceEnvironment } from '@prisma/client';
 import { GatewayError } from '@/lib/gateway/errors';
