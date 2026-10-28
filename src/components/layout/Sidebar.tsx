@@ -25,6 +25,7 @@ const navigationGroups = [
         subItems: [
           { name: 'Clients List', href: '/clients' },
           { name: 'API Keys', href: '/api-keys' },
+          { name: 'Catalog billing', href: '/billing' },
         ]
       },
     ]

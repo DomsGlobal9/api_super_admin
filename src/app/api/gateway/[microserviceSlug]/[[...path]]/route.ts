@@ -10,6 +10,7 @@ import { validatePayloadSize } from '@/lib/security/payload';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { checkCircuitBreaker, recordCircuitSuccess, recordCircuitFailure } from '@/lib/resiliency/circuit-breaker';
 import { enterConcurrencyLimit, releaseConcurrencyLimit } from '@/lib/resiliency/concurrency';
+import { enforceCatalogBilling } from '@/features/billing/catalog-billing.gate';
 
 export const maxDuration = 60; // 60 seconds (requires Vercel Pro, defaults to 10s on Hobby)
 
@@ -52,6 +53,16 @@ export async function ANY(
     // 6. Rate Limiting
     await enforceRateLimit(validatedKey.client.id, route.microservice.slug, access.rateLimit);
     console.log(`[Gateway] Rate limit passed`);
+
+    // 6b. Catalog billing: the service's internal routes are never proxied, and a
+    // generation is refused here, before any AI work, once the month's limit is reached.
+    await enforceCatalogBilling({
+      slug: route.microservice.slug,
+      method: req.method,
+      pathSegments: unwrappedParams.path,
+      clientId: resolvedClient,
+      environment: route.environment,
+    });
 
     // 7. Circuit Breaker Check
     await checkCircuitBreaker(route.microservice.slug);

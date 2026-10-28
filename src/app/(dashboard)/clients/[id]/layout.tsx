@@ -48,6 +48,7 @@ export default function ClientWorkspaceLayout({
     { name: 'APIs', href: `/clients/${id}/apis`, isActive: pathname.includes('/apis') },
     { name: 'Keys', href: `/clients/${id}/keys`, isActive: pathname.includes('/keys') },
     { name: 'Usage', href: `/clients/${id}/usage`, isActive: pathname.includes('/usage') },
+    { name: 'Billing', href: `/clients/${id}/billing`, isActive: pathname.includes('/billing') },
     { name: 'Logs', href: `/clients/${id}/logs`, isActive: pathname.includes('/logs') },
     { name: 'Health', href: `/clients/${id}/health`, isActive: pathname.includes('/health') },
     { name: 'Audit', href: `/clients/${id}/audit`, isActive: pathname.includes('/audit') },

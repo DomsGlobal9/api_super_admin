@@ -262,6 +262,11 @@ model Client {
   requestLogs         RequestLog[]
   clientAccess        ClientAccess[]
 
+  // Catalog billing (per delivered run, billed monthly) - see src/features/billing
+  catalogPrices       CatalogPrice[]
+  catalogBilling      CatalogBillingSetting?
+  catalogBills        CatalogBill[]
+
   @@schema("super_admin")
 }
 
@@ -603,5 +608,83 @@ model SystemSetting {
 
   updatedByUser AdminUser? @relation("SystemSettingUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
+  @@schema("super_admin")
+}
+
+// -----------------------------------------------------------------------------
+// CATALOG BILLING (per delivered run, billed monthly)
+// -----------------------------------------------------------------------------
+// The catalog service records each fully delivered run (se_catalog.billable_runs);
+// these tables price them and bill them. Kinds and statuses are plain text on
+// purpose: a new value must never need a database enum change.
+// Money is whole paise (Int). Months are calendar months in India time.
+
+// A price for one kind of run, from a moment on. Never edited: a change is a new
+// row, so a run is always priced at what applied when it was delivered, and a
+// change never re-prices a past month.
+// scope PLAN   -> applies to every client on `plan` ("DEFAULT" = any plan)
+// scope CLIENT -> applies to `clientId` only, ahead of its plan
+model CatalogPrice {
+  id            String   @id @default(uuid())
+  scope         String // PLAN | CLIENT
+  plan          String?
+  clientId      String?
+  kind          String // CATALOG | COLOUR_VARIANT
+  amountPaise   Int
+  effectiveFrom DateTime
+  note          String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  client Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, kind, effectiveFrom])
+  @@index([plan, kind, effectiveFrom])
+  @@schema("super_admin")
+}
+
+// Per-client switches. No row = the defaults (limit Rs 5,000 a month, GST added).
+model CatalogBillingSetting {
+  clientId          String   @id
+  // Monthly limit before GST, in paise. Null = no limit.
+  monthlyLimitPaise Int?     @default(500000)
+  gstEnabled        Boolean  @default(true)
+  updatedById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@schema("super_admin")
+}
+
+// One bill per client per month. Unique on (clientId, period), so making a
+// month's bill twice can never create a second one.
+model CatalogBill {
+  id            String    @id @default(uuid())
+  number        String    @unique
+  clientId      String
+  period        String // YYYY-MM, India time
+  periodStart   DateTime
+  periodEnd     DateTime
+  status        String    @default("DRAFT") // DRAFT | SENT | PAID
+  currency      String    @default("INR")
+  lines         Json
+  runCount      Int
+  subtotalPaise Int
+  gstEnabled    Boolean
+  gstRateBp     Int // basis points: 1800 = 18%
+  gstPaise      Int
+  totalPaise    Int
+  createdById   String?
+  generatedAt   DateTime  @default(now())
+  sentAt        DateTime?
+  paidAt        DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, period])
+  @@index([period])
   @@schema("super_admin")
 }

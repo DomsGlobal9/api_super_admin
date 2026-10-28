@@ -6,6 +6,8 @@ export type GatewayErrorCode =
   | 'SERVICE_UNAVAILABLE'
   | 'SERVICE_BUSY'
   | 'GATEWAY_TIMEOUT'
+  | 'MONTHLY_LIMIT_REACHED'
+  | 'NOT_FOUND'
   | 'INTERNAL_ERROR';
 
 export class GatewayError extends Error {
