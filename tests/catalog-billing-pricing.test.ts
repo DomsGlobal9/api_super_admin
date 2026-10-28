@@ -54,6 +54,14 @@ describe('which price a run gets', () => {
     expect(resolvePrice(prices, { clientId: 'c1', plan: 'GOLD', kind: 'CATALOG', at: at('2026-10-14T23:59:59Z') })?.amountPaise).toBe(9000);
     expect(resolvePrice(prices, { clientId: 'c1', plan: 'GOLD', kind: 'CATALOG', at: at('2026-10-15T00:00:00Z') })?.amountPaise).toBe(8000);
   });
+  it('two prices starting at the same moment: the one set last wins, whatever their ids', () => {
+    const t = at('2026-10-29T00:00:00Z');
+    const same = [
+      price({ id: 'zzz-set-first', scope: 'CLIENT', plan: null, clientId: 'c9', kind: 'CATALOG', amountPaise: 11000, effectiveFrom: t, createdAt: at('2026-10-28T10:00:00Z') }),
+      price({ id: 'aaa-set-second', scope: 'CLIENT', plan: null, clientId: 'c9', kind: 'CATALOG', amountPaise: 11500, effectiveFrom: t, createdAt: at('2026-10-28T10:05:00Z') }),
+    ];
+    expect(resolvePrice(same, { clientId: 'c9', plan: null, kind: 'CATALOG', at: at('2026-10-29T06:00:00Z') })?.amountPaise).toBe(11500);
+  });
   it('a kind with no price at all is unpriced, not free', () => {
     expect(resolvePrice(DEFAULTS, { clientId: 'c1', plan: null, kind: 'MEN_CATALOG', at: at('2026-10-20T00:00:00Z') })).toBeNull();
   });

@@ -31,10 +31,23 @@ function rs(paise: number) {
   return `Rs ${grouped}.${frac}`;
 }
 
-/** Approximate Helvetica width (points) for right-aligning numbers. */
-function width(text: string, size: number) {
+// Helvetica / Helvetica-Bold glyph widths (per 1000 em) for characters 32-126,
+// from the standard font metrics, so right-aligned amounts line up exactly.
+const D = Array(10).fill(556);
+const HELVETICA = [278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, ...D, 278, 278, 584, 584, 584, 556, 1015,
+  667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611,
+  278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278,
+  556, 500, 722, 500, 500, 500, 334, 260, 334, 584];
+const HELVETICA_BOLD = [278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278, ...D, 333, 333, 584, 584, 584, 611, 975,
+  722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611,
+  333, 278, 333, 584, 556, 333, 556, 611, 556, 611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611, 611, 611, 389, 556, 333,
+  611, 556, 778, 556, 556, 500, 389, 280, 389, 584];
+
+/** Width of `text` in points, as the PDF will draw it. */
+function width(text: string, size: number, bold = false) {
+  const table = bold ? HELVETICA_BOLD : HELVETICA;
   let w = 0;
-  for (const ch of text) w += /[0-9]/.test(ch) ? 556 : ch === ',' || ch === '.' || ch === ' ' ? 278 : ch === 'R' ? 722 : 500;
+  for (const ch of ascii(text)) w += table[ch.charCodeAt(0) - 32] ?? 556;
   return (w / 1000) * size;
 }
 
@@ -42,7 +55,7 @@ export function billPdf(bill: BillForPdf): Buffer {
   const ops: string[] = [];
   const text = (x: number, y: number, s: string, size = 10, bold = false) =>
     ops.push(`BT /${bold ? 'F2' : 'F1'} ${size} Tf ${x.toFixed(2)} ${y.toFixed(2)} Td (${esc(s)}) Tj ET`);
-  const right = (xRight: number, y: number, s: string, size = 10, bold = false) => text(xRight - width(s, size), y, s, size, bold);
+  const right = (xRight: number, y: number, s: string, size = 10, bold = false) => text(xRight - width(s, size, bold), y, s, size, bold);
   const rule = (y: number) => ops.push(`0.8 G 50 ${y} m 545 ${y} l S 0 G`);
 
   let y = 790;

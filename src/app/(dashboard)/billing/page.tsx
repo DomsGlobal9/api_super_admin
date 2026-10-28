@@ -87,7 +87,7 @@ export default function CatalogBillingPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="text-left text-gray-500"><tr><th className="px-6 py-2 font-medium">Plan</th><th className="px-3 py-2 font-medium">Kind</th><th className="px-3 py-2 font-medium">From</th><th className="px-3 py-2 font-medium text-right">Price</th><th className="px-6 py-2 font-medium">Note</th></tr></thead>
+            <thead className="text-left text-gray-500"><tr><th className="px-6 py-2 font-medium">Plan</th><th className="px-3 py-2 font-medium">Kind</th><th className="px-3 py-2 font-medium">From</th><th className="px-3 py-2 font-medium text-right">Price</th><th className="hidden md:table-cell px-6 py-2 font-medium">Note</th></tr></thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {prices.map((p) => (
                 <tr key={p.id}>
@@ -95,7 +95,7 @@ export default function CatalogBillingPage() {
                   <td className="px-3 py-2">{KIND_LABEL[p.kind as 'CATALOG'] || p.kind}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{new Date(p.effectiveFrom).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</td>
                   <td className="px-3 py-2 text-right">{formatRupees(p.amountPaise)}</td>
-                  <td className="px-6 py-2 text-xs text-gray-500">{p.note || ''}</td>
+                  <td className="hidden md:table-cell px-6 py-2 text-xs text-gray-500">{p.note || ''}</td>
                 </tr>
               ))}
             </tbody>
@@ -111,7 +111,7 @@ export default function CatalogBillingPage() {
           </div>
           <div className="grid grid-cols-2 gap-3 max-w-lg">
             <label className="text-sm text-gray-600 dark:text-gray-400">Price in ₹, before GST<input className={input} inputMode="decimal" placeholder="100" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
-            <label className="text-sm text-gray-600 dark:text-gray-400">Starts on (empty = now)<input className={input} type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
+            <label className="text-sm text-gray-600 dark:text-gray-400">Starts on (empty = now)<input className={input} type="date" min={new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)} value={from} onChange={(e) => setFrom(e.target.value)} /></label>
           </div>
           <button className={primary} disabled={busy || !amount} onClick={savePrice}>Set price</button>
           <NoticeLine notice={priceNotice} />
@@ -133,7 +133,7 @@ export default function CatalogBillingPage() {
         {bills.length === 0 ? (
           <p className="px-6 py-8 text-sm text-gray-500 text-center">No bills for {month ? periodLabel(month) : 'this month'} yet.</p>
         ) : (
-          <table className="min-w-full text-sm">
+          <div className="overflow-x-auto"><table className="min-w-full text-sm">
             <thead className="text-left text-gray-500"><tr><th className="px-6 py-2 font-medium">Client</th><th className="px-3 py-2 font-medium">Bill</th><th className="px-3 py-2 font-medium text-right">Total</th><th className="px-6 py-2 font-medium">Status</th></tr></thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {bills.map((b) => (
@@ -145,7 +145,7 @@ export default function CatalogBillingPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </section>
     </div>

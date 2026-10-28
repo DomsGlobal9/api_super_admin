@@ -31,6 +31,12 @@ export function isKind(value: unknown): value is RunKind {
   return typeof value === 'string' && (KINDS as readonly string[]).includes(value);
 }
 
+/**
+ * GST rule (documented): 18% of the month's subtotal, rounded ONCE to the nearest
+ * paisa (half up). It is never rounded per run, so a bill's GST cannot drift by a
+ * paisa from what the subtotal says.
+ */
+
 /** "2026-10" -> the instants that month starts and ends in India time. */
 export function periodRange(period: string): { start: Date; end: Date } {
   const m = PERIOD.exec(period);
@@ -71,6 +77,7 @@ export interface PriceRow {
   kind: string;
   amountPaise: number;
   effectiveFrom: Date;
+  createdAt?: Date; // breaks a tie between prices starting at the same moment: set last wins
 }
 
 export type PriceSource = 'CLIENT' | 'PLAN' | 'DEFAULT';
@@ -96,8 +103,12 @@ export function resolvePrice(
     for (const p of prices) {
       if (p.kind !== ctx.kind || !match(p)) continue;
       if (p.effectiveFrom.getTime() > ctx.at.getTime()) continue;
-      if (!best || p.effectiveFrom.getTime() > best.effectiveFrom.getTime()
-        || (p.effectiveFrom.getTime() === best.effectiveFrom.getTime() && p.id > best.id)) best = p;
+      if (!best || p.effectiveFrom.getTime() > best.effectiveFrom.getTime()) { best = p; continue; }
+      if (p.effectiveFrom.getTime() === best.effectiveFrom.getTime()) {
+        const pc = p.createdAt ? p.createdAt.getTime() : 0;
+        const bc = best.createdAt ? best.createdAt.getTime() : 0;
+        if (pc > bc || (pc === bc && p.id > best.id)) best = p;
+      }
     }
     return best;
   };

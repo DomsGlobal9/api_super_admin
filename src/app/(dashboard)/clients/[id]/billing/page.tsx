@@ -15,6 +15,9 @@ function nextPeriod(period: string) {
   return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
 }
 
+/** A big month has thousands of runs; the page lists the latest, the CSV has every one. */
+const RUN_ROWS_SHOWN = 200;
+
 const SOURCE_LABEL: Record<string, string> = {
   CLIENT: "This client's own price",
   PLAN: 'Their plan price',
@@ -39,6 +42,7 @@ function Notice({ notice }: { notice: { ok: boolean; text: string } | null }) {
 export default function ClientBillingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const thisMonth = periodOf(new Date());
+  const todayIst = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
   const [month, setMonth] = useState(thisMonth);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -181,20 +185,23 @@ export default function ClientBillingPage({ params }: { params: Promise<{ id: st
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="text-left text-gray-500"><tr><th className="px-6 py-2 font-medium">Delivered</th><th className="px-3 py-2 font-medium">Kind</th><th className="px-3 py-2 font-medium">Colour</th><th className="px-3 py-2 font-medium">Garment</th><th className="px-3 py-2 font-medium">Request</th><th className="px-6 py-2 font-medium text-right">Price</th></tr></thead>
+                <thead className="text-left text-gray-500"><tr><th className="px-4 sm:px-6 py-2 font-medium">Delivered</th><th className="px-3 py-2 font-medium">Kind</th><th className="px-3 py-2 font-medium">Colour</th><th className="hidden sm:table-cell px-3 py-2 font-medium">Garment</th><th className="hidden md:table-cell px-3 py-2 font-medium">Request</th><th className="px-6 py-2 font-medium text-right">Price</th></tr></thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {[...s.runs].reverse().map((r: any) => (
+                  {[...s.runs].reverse().slice(0, RUN_ROWS_SHOWN).map((r: any) => (
                     <tr key={r.id}>
-                      <td className="px-6 py-2 whitespace-nowrap">{new Date(r.deliveredAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</td>
+                      <td className="px-4 sm:px-6 py-2 sm:whitespace-nowrap">{new Date(r.deliveredAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}</td>
                       <td className="px-3 py-2">{KIND_LABEL[r.kind as 'CATALOG'] || r.kind}</td>
                       <td className="px-3 py-2">{r.colourName ? <span className="inline-flex items-center gap-2">{r.colourHex && <span className="h-3 w-3 rounded-full border border-gray-300" style={{ background: r.colourHex }} />}{r.colourName}</span> : '—'}</td>
-                      <td className="px-3 py-2 font-mono text-xs text-gray-500">{r.garmentRef ? r.garmentRef.slice(0, 8) : '—'}</td>
-                      <td className="px-3 py-2 font-mono text-xs text-gray-500 max-w-48 truncate" title={r.requestKey}>{r.requestKey}</td>
+                      <td className="hidden sm:table-cell px-3 py-2 font-mono text-xs text-gray-500">{r.garmentRef ? r.garmentRef.slice(0, 8) : '—'}</td>
+                      <td className="hidden md:table-cell px-3 py-2 font-mono text-xs text-gray-500 max-w-48 truncate" title={r.requestKey}>{r.requestKey}</td>
                       <td className="px-6 py-2 text-right">{r.amountPaise === null ? 'No price set' : formatRupees(r.amountPaise)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              {s.runs.length > RUN_ROWS_SHOWN && (
+                <p className="px-6 py-3 text-xs text-gray-500">Showing the latest {RUN_ROWS_SHOWN} of {s.runs.length.toLocaleString('en-IN')} runs. The CSV has them all.</p>
+              )}
             </div>
           )}
         </section>
@@ -227,7 +234,7 @@ export default function ClientBillingPage({ params }: { params: Promise<{ id: st
             </div>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm text-gray-600 dark:text-gray-400">Price in ₹, before GST<input className={input} inputMode="decimal" placeholder="100" value={priceAmount} onChange={(e) => setPriceAmount(e.target.value)} /></label>
-              <label className="text-sm text-gray-600 dark:text-gray-400">Starts on (empty = now)<input className={input} type="date" value={priceFrom} onChange={(e) => setPriceFrom(e.target.value)} /></label>
+              <label className="text-sm text-gray-600 dark:text-gray-400">Starts on (empty = now)<input className={input} type="date" min={todayIst} value={priceFrom} onChange={(e) => setPriceFrom(e.target.value)} /></label>
             </div>
             <button className={primary} disabled={busy || !priceAmount} onClick={savePrice}>Set price</button>
             <Notice notice={priceNotice} />
@@ -277,30 +284,28 @@ export default function ClientBillingPage({ params }: { params: Promise<{ id: st
         {data.bills.length === 0 ? (
           <p className="px-6 py-8 text-sm text-gray-500 text-center">No bills yet.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="text-left text-gray-500"><tr><th className="px-6 py-2 font-medium">Bill</th><th className="px-3 py-2 font-medium">Month</th><th className="px-3 py-2 font-medium text-right">Total</th><th className="px-3 py-2 font-medium">Status</th><th className="px-6 py-2" /></tr></thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {data.bills.map((b: any) => (
-                  <tr key={b.id}>
-                    <td className="px-6 py-2 font-mono text-xs">{b.number}</td>
-                    <td className="px-3 py-2">{periodLabel(b.period)}</td>
-                    <td className="px-3 py-2 text-right">{formatRupees(b.totalPaise)}{b.gstEnabled ? <span className="block text-xs text-gray-500">incl. GST {formatRupees(b.gstPaise)}</span> : null}</td>
-                    <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[b.status] || ''}`}>{b.status.charAt(0) + b.status.slice(1).toLowerCase()}</span></td>
-                    <td className="px-6 py-2">
-                      <div className="flex flex-wrap justify-end gap-2">
-                        <a className={button} href={billingApi.pdfUrl(id, b.id)} target="_blank" rel="noreferrer"><FileText className="mr-1 h-4 w-4" />PDF</a>
-                        {b.status === 'DRAFT' && <button className={button} disabled={busy} onClick={() => setStatus(b.id, 'SENT')}>Mark sent</button>}
-                        {b.status === 'SENT' && <button className={button} disabled={busy} onClick={() => setStatus(b.id, 'PAID')}>Mark paid</button>}
-                        {b.status === 'SENT' && <button className={button} disabled={busy} onClick={() => setStatus(b.id, 'DRAFT')}>Back to draft</button>}
-                        {b.status === 'PAID' && <button className={button} disabled={busy} onClick={() => setStatus(b.id, 'SENT')}>Not paid after all</button>}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+            {data.bills.map((b: any) => (
+              <li key={b.id} className="px-4 sm:px-6 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+                <div className="min-w-40 flex-1">
+                  <p className="font-medium text-gray-900 dark:text-white">{periodLabel(b.period)}</p>
+                  <p className="font-mono text-xs text-gray-500">{b.number}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">{formatRupees(b.totalPaise)}</p>
+                  {b.gstEnabled ? <p className="text-xs text-gray-500">incl. GST {formatRupees(b.gstPaise)}</p> : <p className="text-xs text-gray-500">no GST</p>}
+                </div>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[b.status] || ''}`}>{b.status.charAt(0) + b.status.slice(1).toLowerCase()}</span>
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:ml-auto">
+                  <a className={button} href={billingApi.pdfUrl(id, b.id)} target="_blank" rel="noreferrer"><FileText className="mr-1 h-4 w-4" />PDF</a>
+                  {b.status === 'DRAFT' && <button className={button} disabled={busy} onClick={() => setStatus(b.id, 'SENT')}>Mark sent</button>}
+                  {b.status === 'SENT' && <button className={button} disabled={busy} onClick={() => setStatus(b.id, 'PAID')}>Mark paid</button>}
+                  {b.status === 'SENT' && <button className={button} disabled={busy} onClick={() => setStatus(b.id, 'DRAFT')}>Back to draft</button>}
+                  {b.status === 'PAID' && <button className={button} disabled={busy} onClick={() => setStatus(b.id, 'SENT')}>Not paid after all</button>}
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>

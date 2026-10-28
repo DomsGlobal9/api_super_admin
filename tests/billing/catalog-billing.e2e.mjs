@@ -183,7 +183,7 @@ async function main() {
     const set = await admin('POST', `/clients/${A.id}/billing/prices`, { kind: 'CATALOG', amountRupees: '120' });
     eq('a client price is set from the console (from now)', [set.status, set.body.data?.amountPaise, set.body.data?.scope], [201, 12000, 'CLIENT']);
     const past = await admin('POST', `/clients/${A.id}/billing/prices`, { kind: 'CATALOG', amountRupees: '1', effectiveFrom: `${lastMonth}-15` });
-    eq('a price that would start in a past month is refused', [past.status, past.body.error?.code], [400, 'PRICE_IN_PAST_MONTH']);
+    eq('a price that would start in a past month is refused', [past.status, past.body.error?.code], [400, 'PRICE_IN_PAST']);
     const bad = await admin('POST', `/clients/${A.id}/billing/prices`, { kind: 'CATALOG', amountRupees: '-5' });
     eq('a bad amount is refused with a plain sentence', [bad.status, bad.body.error?.message], [400, 'Enter a price in rupees, like 100 or 99.50.']);
     await generate(A, { saree: `stub:ok:garment2-${RUN}` });

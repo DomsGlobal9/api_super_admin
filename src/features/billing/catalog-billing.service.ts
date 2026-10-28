@@ -17,7 +17,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import {
   DEFAULT_MONTHLY_LIMIT_PAISE, DEFAULT_PLAN, KINDS, RunKind, PriceRow, UsageRun,
-  buildLines, computeTotals, isKind, periodOf, periodRange, priceRuns, resolvePrice,
+  buildLines, computeTotals, isKind, periodLabel, periodOf, periodRange, priceRuns, resolvePrice,
 } from './catalog-billing.pricing';
 
 export const CATALOG_SERVICE_SLUG = process.env.CATALOG_BILLING_SERVICE_SLUG || 'cat';
@@ -182,20 +182,24 @@ export async function checkMonthlyLimit(
 
 // ── Prices and settings ──────────────────────────────────────────────────────
 
-function assertEffectiveFrom(effectiveFrom: Date) {
-  // Past months are closed: a price may start no earlier than this month (India
-  // time), so a change can never re-price a month that is already billed.
-  const thisMonth = periodRange(periodOf(new Date())).start;
-  if (effectiveFrom.getTime() < thisMonth.getTime()) {
-    throw new BillingError('PRICE_IN_PAST_MONTH', 'A new price can start this month or later, not in a past month.');
-  }
+/**
+ * When a new price starts. Runs already made always keep the price they were made
+ * at, so a price can start now or later, never earlier: a start date of today
+ * means "from now", and an earlier date is refused.
+ */
+export function startOfNewPrice(requested: Date, now = new Date()): Date {
+  if (requested.getTime() >= now.getTime()) return requested;
+  if (requested.getTime() >= now.getTime() - 60_000) return now; // "now", give or take the request's own travel time
+  const todayIst = (d: Date) => new Date(d.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+  if (todayIst(requested) === todayIst(now)) return now;
+  throw new BillingError('PRICE_IN_PAST', 'A new price can start now or on a later date. Runs already made keep the price they were made at.');
 }
 
 export async function addPrice(input: {
   scope: 'PLAN' | 'CLIENT'; plan?: string | null; clientId?: string | null; kind: RunKind;
   amountPaise: number; effectiveFrom: Date; note?: string | null; adminId?: string | null;
 }) {
-  assertEffectiveFrom(input.effectiveFrom);
+  const effectiveFrom = startOfNewPrice(input.effectiveFrom);
   return prisma.catalogPrice.create({
     data: {
       scope: input.scope,
@@ -203,7 +207,7 @@ export async function addPrice(input: {
       clientId: input.scope === 'CLIENT' ? input.clientId! : null,
       kind: input.kind,
       amountPaise: input.amountPaise,
-      effectiveFrom: input.effectiveFrom,
+      effectiveFrom,
       note: input.note || null,
       createdById: input.adminId || null,
     },
@@ -244,6 +248,10 @@ export async function generateBill(clientId: string, period: string, adminId?: s
   if (existing && existing.status !== 'DRAFT') return { bill: existing, created: false };
 
   const s = await monthSummary(clientId, period, target);
+  if (!existing && s.lines.length === 0) {
+    // No ₹0 bills: a month with nothing delivered (or nothing priced) is not billed.
+    throw new BillingError('NOTHING_TO_BILL', `Nothing was delivered in ${periodLabel(period)}, so there is nothing to bill.`);
+  }
   const data = {
     periodStart: start,
     periodEnd: end,
@@ -289,7 +297,13 @@ export async function generateBillsForPeriod(period: string, adminId?: string | 
   const known = await prisma.client.findMany({ where: { id: { in: clientIds } }, select: { id: true } });
   const results = [];
   for (const { id } of known) {
-    const r = await generateBill(id, period, adminId, target);
+    let r;
+    try {
+      r = await generateBill(id, period, adminId, target);
+    } catch (err) {
+      if (err instanceof BillingError && err.code === 'NOTHING_TO_BILL') continue;
+      throw err;
+    }
     results.push({ clientId: id, billId: r.bill.id, number: r.bill.number, created: r.created, status: r.bill.status, totalPaise: r.bill.totalPaise });
   }
   return { period, bills: results, unknownClients: clientIds.length - known.length };
