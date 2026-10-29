@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clientsApi } from '@/lib/api-client/clients';
 import { Ban, Trash2, AlertTriangle, Save, Edit2, X } from 'lucide-react';
+import { confirmTextMatches } from '@/lib/utils';
 
 export default function ClientSettingsPage({
   params,
@@ -357,7 +358,7 @@ export default function ClientSettingsPage({
               </button>
               <button
                 onClick={handleHardDelete}
-                disabled={isDeleting || confirmTextDelete !== client?.companyName}
+                disabled={isDeleting || !confirmTextMatches(confirmTextDelete, client?.companyName)}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 flex items-center"
               >
                 {isDeleting ? 'Deleting...' : 'Yes, erase forever'}
@@ -413,7 +414,7 @@ export default function ClientSettingsPage({
               </button>
               <button
                 onClick={handleSuspend}
-                disabled={isSuspending || confirmTextSuspend !== client?.companyName}
+                disabled={isSuspending || !confirmTextMatches(confirmTextSuspend, client?.companyName)}
                 className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 flex items-center ${
                   isSuspended 
                     ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 

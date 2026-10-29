@@ -1,4 +1,5 @@
 import { redis } from '../redis';
+import { prisma } from '../prisma';
 
 export const CacheInvalidator = {
   /**
@@ -6,12 +7,48 @@ export const CacheInvalidator = {
    * Call this when a key is revoked or its permissions change.
    */
   async invalidateApiKey(keyHash: string) {
+    await CacheInvalidator.invalidateApiKeys([keyHash]);
+  },
+
+  /**
+   * Invalidates the cached validation of several API keys at once.
+   */
+  async invalidateApiKeys(keyHashes: string[]) {
+    if (keyHashes.length === 0) return;
     try {
-      await redis.del(`apikey:${keyHash}`);
-      console.log(`[Cache Invalidator] Invalidated API Key: apikey:${keyHash}`);
+      await redis.del(...keyHashes.map((h) => `apikey:${h}`));
+      console.log(`[Cache Invalidator] Invalidated ${keyHashes.length} API Key(s)`);
     } catch (err) {
-      console.error(`[Cache Invalidator] Failed to invalidate API Key:`, err);
+      console.error(`[Cache Invalidator] Failed to invalidate API Key(s):`, err);
     }
+  },
+
+  /**
+   * The key hashes of every API key a client has, revoked ones included, so the
+   * cache entries can still be found once the rows are gone (hard delete).
+   * Returns [] when the lookup fails, so the caller's own write still goes ahead.
+   */
+  async apiKeyHashesForClient(clientId: string): Promise<string[]> {
+    try {
+      const keys = await prisma.apiKey.findMany({ where: { clientId }, select: { keyHash: true } });
+      return keys.map((k) => k.keyHash);
+    } catch (err) {
+      console.error(`[Cache Invalidator] Failed to list API keys for client ${clientId}:`, err);
+      return [];
+    }
+  },
+
+  /**
+   * Invalidates the cached validation of every API key a client has.
+   *
+   * The gateway caches each validated key TOGETHER WITH ITS CLIENT ROW for
+   * GATEWAY_CACHE_TTL_SEC (5 minutes by default) and, on a cache hit, never looks
+   * at the client again. So a client suspended or deleted in the console keeps
+   * calling through the gateway until that entry expires, unless it is removed
+   * here. Call this whenever a client's status changes.
+   */
+  async invalidateClientApiKeys(clientId: string) {
+    await CacheInvalidator.invalidateApiKeys(await CacheInvalidator.apiKeyHashesForClient(clientId));
   },
 
   /**

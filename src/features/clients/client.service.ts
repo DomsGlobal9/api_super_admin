@@ -1,6 +1,7 @@
 import { ClientRepository, clientRepository as defaultClientRepository } from './client.repository';
 import { CreateClientDTO, UpdateClientDTO, ClientQueryDTO } from './client.schema';
-import { NotFoundError, ConflictError } from '@/lib/errors/errors'; 
+import { NotFoundError, ConflictError } from '@/lib/errors/errors';
+import { CacheInvalidator } from '@/lib/cache/invalidator';
 
 export class ClientService {
   constructor(private readonly repo: ClientRepository = defaultClientRepository) {}
@@ -30,15 +31,28 @@ export class ClientService {
 
   async updateClient(id: string, data: UpdateClientDTO, adminUserId: string) {
     await this.getClientById(id); // Ensure exists
-    return this.repo.update(id, data, adminUserId);
+    const updated = await this.repo.update(id, data, adminUserId);
+    if (data.status !== undefined) {
+      // A suspension (or reactivation) must reach the gateway now, not when its
+      // cached copy of the client expires. After the write, so nothing re-caches
+      // the old status in between.
+      await CacheInvalidator.invalidateClientApiKeys(id);
+    }
+    return updated;
   }
 
   async deleteClient(id: string, adminUserId: string, force: boolean = false) {
     await this.getClientById(id); // Ensure exists
     if (force) {
-      return this.repo.hardDelete(id);
+      // The hashes must be read before the rows go; the cache is cleared after.
+      const keyHashes = await CacheInvalidator.apiKeyHashesForClient(id);
+      const result = await this.repo.hardDelete(id);
+      await CacheInvalidator.invalidateApiKeys(keyHashes);
+      return result;
     }
-    return this.repo.softDelete(id, adminUserId);
+    const deleted = await this.repo.softDelete(id, adminUserId);
+    await CacheInvalidator.invalidateClientApiKeys(id);
+    return deleted;
   }
 
   async assignApi(clientId: string, apiId: string) {
