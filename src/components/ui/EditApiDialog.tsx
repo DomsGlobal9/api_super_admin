@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { apisClient } from '@/lib/api-client/apis';
 
+const MB = 1024 * 1024;
+
 interface EditApiDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,16 +23,22 @@ export function EditApiDialog({ isOpen, onClose, onSuccess, apiId, initialData }
     description: '',
     targetUrl: '',
     internalSecret: '',
+    timeoutSec: '',
+    maxPayloadMb: '',
   });
 
   useEffect(() => {
     if (initialData) {
+      // The gateway only reads the PRODUCTION environment.
+      const env = initialData.environments?.find((e: { environment?: string }) => e.environment === 'PRODUCTION') || initialData.environments?.[0];
       setFormData({
         displayName: initialData.displayName || '',
         slug: initialData.slug || '',
         description: initialData.description || '',
-        targetUrl: initialData.environments?.[0]?.targetUrl || '',
-        internalSecret: initialData.environments?.[0]?.internalSecret || '',
+        targetUrl: env?.targetUrl || '',
+        internalSecret: env?.internalSecret || '',
+        timeoutSec: env?.timeoutMs ? String(env.timeoutMs / 1000) : '',
+        maxPayloadMb: env?.maxPayloadSize ? String(Math.round((env.maxPayloadSize / MB) * 100) / 100) : '',
       });
     }
   }, [initialData]);
@@ -49,10 +57,26 @@ export function EditApiDialog({ isOpen, onClose, onSuccess, apiId, initialData }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
+    const { timeoutSec, maxPayloadMb, ...rest } = formData;
+    const seconds = Number(timeoutSec);
+    const megabytes = Number(maxPayloadMb);
+    if (!timeoutSec.trim() || !Number.isFinite(seconds) || seconds < 1 || seconds > 300) {
+      setError('Timeout must be a number of seconds from 1 to 300.');
+      return;
+    }
+    if (!maxPayloadMb.trim() || !Number.isFinite(megabytes) || megabytes < 0.01 || megabytes > 100) {
+      setError('Request size limit must be a number of MB from 0.01 to 100.');
+      return;
+    }
+
+    setLoading(true);
     try {
-      await apisClient.updateApi(apiId, formData);
+      await apisClient.updateApi(apiId, {
+        ...rest,
+        timeoutMs: Math.round(seconds * 1000),
+        maxPayloadSize: Math.round(megabytes * MB),
+      });
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -66,7 +90,7 @@ export function EditApiDialog({ isOpen, onClose, onSuccess, apiId, initialData }
     <>
       <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 transition-opacity" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-200 dark:border-gray-800">
+        <div className="bg-white dark:bg-gray-950 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Edit API Configuration
@@ -141,6 +165,37 @@ export function EditApiDialog({ isOpen, onClose, onSuccess, apiId, initialData }
                     <Eye className="h-4 w-4" aria-hidden="true" />
                   )}
                 </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="maxPayloadMb" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Request Size Limit (MB)</label>
+                <input
+                  required
+                  id="maxPayloadMb"
+                  type="text"
+                  inputMode="decimal"
+                  name="maxPayloadMb"
+                  value={formData.maxPayloadMb}
+                  onChange={handleChange}
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">Bigger requests are refused. Up to 100.</p>
+              </div>
+              <div>
+                <label htmlFor="timeoutSec" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timeout (seconds)</label>
+                <input
+                  required
+                  id="timeoutSec"
+                  type="text"
+                  inputMode="numeric"
+                  name="timeoutSec"
+                  value={formData.timeoutSec}
+                  onChange={handleChange}
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">How long to wait for the service to start answering. Up to 300.</p>
               </div>
             </div>
 

@@ -10,9 +10,16 @@ export const CreateApiSchema = z.object({
   internalSecret: z.string().optional(),
 });
 
+// The gateway reads both from the PRODUCTION environment of the API: the request size
+// limit before forwarding, the timeout while it waits for the service's first answer.
+export const MAX_PAYLOAD_BYTES = 100 * 1024 * 1024;
+export const MAX_TIMEOUT_MS = 300000;
+
 export const UpdateApiSchema = CreateApiSchema.partial().extend({
   documentation: z.string().optional().nullable(),
   openapiSpecUrl: z.string().url().optional().nullable(),
+  timeoutMs: z.number().int().min(1000, 'Timeout must be at least 1 second').max(MAX_TIMEOUT_MS, 'Timeout cannot be more than 5 minutes').optional(),
+  maxPayloadSize: z.number().int().min(1024, 'Request size limit must be at least 1 KB').max(MAX_PAYLOAD_BYTES, 'Request size limit cannot be more than 100 MB').optional(),
 });
 
 export const ApiQuerySchema = z.object({

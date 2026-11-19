@@ -3,6 +3,7 @@ import { CreateApiDTO, UpdateApiDTO, ApiQueryDTO } from './api.schema';
 import { NotFoundError, ConflictError } from '@/lib/errors/errors';
 import { ApiMapper } from './api.mapper';
 import { ApiOverviewDTO } from './api.types';
+import { CacheInvalidator } from '@/lib/cache/invalidator';
 
 export class ApiService {
   constructor(private readonly repo: ApiRepository = defaultApiRepository) {}
@@ -54,7 +55,7 @@ export class ApiService {
   }
 
   async updateApi(id: string, data: UpdateApiDTO, adminUserId: string) {
-    await this.getApiById(id); // Ensure exists
+    const before = await this.getApiById(id); // Ensure exists
     if (data.slug) {
       const existing = await this.repo.findMany({ search: data.slug, page: 1, pageSize: 1 });
       if (existing.total > 0 && existing.apis[0].id !== id && existing.apis[0].slug === data.slug) {
@@ -62,6 +63,11 @@ export class ApiService {
       }
     }
     const updated = await this.repo.update(id, data, adminUserId);
+    // The gateway keeps each API's route (URL, master key, timeout, size limit) in Redis
+    // for GATEWAY_CACHE_TTL_SEC. Drop it so a saved change applies to the next call,
+    // under the old slug and, when the slug changed, the new one.
+    const slugs = new Set([before.slug, updated.slug].filter(Boolean) as string[]);
+    for (const slug of slugs) await CacheInvalidator.invalidateRoute('PRODUCTION', slug);
     return ApiMapper.toDTO(updated);
   }
 

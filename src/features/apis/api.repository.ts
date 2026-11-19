@@ -106,12 +106,14 @@ export class ApiRepository extends BaseRepository<any> {
   }
 
   async update(id: string, data: UpdateApiDTO, adminUserId: string) {
-    const { targetUrl, internalSecret, ...rest } = data;
-    
+    const { targetUrl, internalSecret, timeoutMs, maxPayloadSize, ...rest } = data;
+
     // Build nested update for environment if necessary
     const envUpdate: any = {};
     if (targetUrl !== undefined) envUpdate.targetUrl = targetUrl;
     if (internalSecret !== undefined) envUpdate.internalSecret = internalSecret || null;
+    if (timeoutMs !== undefined) envUpdate.timeoutMs = timeoutMs;
+    if (maxPayloadSize !== undefined) envUpdate.maxPayloadSize = maxPayloadSize;
 
     return this.db.microservice.update({
       where: { id },
