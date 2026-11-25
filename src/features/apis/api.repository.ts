@@ -2,6 +2,7 @@ import { BaseRepository } from '@/lib/core/repository';
 import { CreateApiDTO, UpdateApiDTO, ApiQueryDTO } from './api.schema';
 import { Prisma } from '@prisma/client';
 import { getDateBoundaries } from '@/lib/date-utils';
+import { ConflictError } from '@/lib/errors/errors';
 
 export class ApiRepository extends BaseRepository<any> {
   async findMany(query: ApiQueryDTO, tzOffset?: number) {
@@ -115,19 +116,32 @@ export class ApiRepository extends BaseRepository<any> {
     if (timeoutMs !== undefined) envUpdate.timeoutMs = timeoutMs;
     if (maxPayloadSize !== undefined) envUpdate.maxPayloadSize = maxPayloadSize;
 
+    // The PRODUCTION environment is what the gateway routes by. It used to be only updated here, so
+    // an API whose row had gone (found 25 Nov 2026: cat, studio and discovery all answered
+    // "Environment 'PRODUCTION' not configured") could not be repaired from the console. Saving
+    // now creates it when it is missing - which needs the target URL.
+    let environments: Prisma.MicroserviceEnvironmentUpdateManyWithoutMicroserviceNestedInput | undefined;
+    if (Object.keys(envUpdate).length > 0) {
+      const existing = await this.db.microserviceEnvironment.findUnique({
+        where: { microserviceId_environment: { microserviceId: id, environment: 'PRODUCTION' } },
+        select: { id: true },
+      });
+      if (existing) {
+        environments = { updateMany: { where: { environment: 'PRODUCTION' }, data: envUpdate } };
+      } else {
+        if (!envUpdate.targetUrl) {
+          throw new ConflictError('This API has no production settings yet. Open Edit API, enter its Target Server URL and master key, and save.');
+        }
+        environments = { create: { environment: 'PRODUCTION', ...envUpdate } };
+      }
+    }
+
     return this.db.microservice.update({
       where: { id },
       data: {
         ...rest,
         updatedById: adminUserId,
-        ...(Object.keys(envUpdate).length > 0 && {
-          environments: {
-            updateMany: {
-              where: { environment: 'PRODUCTION' },
-              data: envUpdate
-            }
-          }
-        })
+        ...(environments && { environments }),
       },
       include: { module: true, environments: true },
     });

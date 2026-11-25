@@ -50,12 +50,28 @@ describe('UpdateApiSchema - size limit and timeout', () => {
 });
 
 describe('ApiRepository.update - writes both to the PRODUCTION environment', () => {
-  const makeRepo = () => {
-    type UpdateArgs = { data: Record<string, unknown> & { environments?: { updateMany: unknown } } };
+  const makeRepo = (hasProduction = true) => {
+    type UpdateArgs = { data: Record<string, unknown> & { environments?: { updateMany?: unknown; create?: unknown } } };
     const update = vi.fn(async (args: UpdateArgs) => ({ id: 'a1', slug: 'studio', environments: [], ...args.data }));
-    const repo = new ApiRepository({ microservice: { update } } as unknown as PrismaClient);
-    return { repo, update };
+    const findUnique = vi.fn(async () => (hasProduction ? { id: 'env1' } : null));
+    const repo = new ApiRepository({ microservice: { update }, microserviceEnvironment: { findUnique } } as unknown as PrismaClient);
+    return { repo, update, findUnique };
   };
+  // Found 25 Nov 2026: cat, studio and discovery had lost their PRODUCTION rows, and Edit API only
+  // updated an existing row - so the console could not put them back.
+  it('creates the PRODUCTION environment when it is missing, from the target URL and master key', async () => {
+    const { repo, update, findUnique } = makeRepo(false);
+    await repo.update('a1', { targetUrl: 'https://catalog-tryon-microservice.onrender.com', internalSecret: 'k', maxPayloadSize: 50 * MB }, 'admin1');
+    expect(findUnique).toHaveBeenCalledWith({ where: { microserviceId_environment: { microserviceId: 'a1', environment: 'PRODUCTION' } }, select: { id: true } });
+    expect(update.mock.calls[0][0].data.environments).toEqual({
+      create: { environment: 'PRODUCTION', targetUrl: 'https://catalog-tryon-microservice.onrender.com', internalSecret: 'k', maxPayloadSize: 50 * MB },
+    });
+  });
+  it('refuses, saying what to do, when the row is missing and no target URL was sent (Settings tab limits alone)', async () => {
+    const { repo, update } = makeRepo(false);
+    await expect(repo.update('a1', { timeoutMs: 300000 }, 'admin1')).rejects.toMatchObject({ statusCode: 409, message: expect.stringMatching(/no production settings yet.*Target Server URL/) });
+    expect(update).not.toHaveBeenCalled();
+  });
   it('saves the size limit and the timeout next to the target URL', async () => {
     const { repo, update } = makeRepo();
     await repo.update('a1', { maxPayloadSize: 50 * MB, timeoutMs: 300000, targetUrl: 'https://svc.example.com' }, 'admin1');
