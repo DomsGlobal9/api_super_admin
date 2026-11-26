@@ -4,7 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clientsApi } from '@/lib/api-client/clients';
 import { Ban, Trash2, AlertTriangle, Save, Edit2, X } from 'lucide-react';
-import { confirmTextMatches } from '@/lib/utils';
+import { cleanCompact, confirmTextMatches, normaliseTyping } from '@/lib/utils';
 
 export default function ClientSettingsPage({
   params,
@@ -63,7 +63,11 @@ export default function ClientSettingsPage({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    // Email and phone can never hold a space, so pasted junk goes at once and the
+    // browser's own email check is not tripped by an invisible character. Other
+    // fields only lose invisible characters while typing; the server trims them.
+    const next = name === 'email' || name === 'phone' ? cleanCompact(value) : normaliseTyping(value);
+    setFormData(prev => ({ ...prev, [name]: next }));
   };
 
   const handleSave = async (e: React.FormEvent) => {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { clientsApi } from '@/lib/api-client/clients';
+import { cleanCompact, cleanLine, normaliseTyping } from '@/lib/utils';
 
 interface CreateClientModalProps {
   isOpen: boolean;
@@ -21,7 +22,11 @@ export function CreateClientModal({ isOpen, onClose, onSuccess }: CreateClientMo
     setError('');
 
     try {
-      await clientsApi.create(formData);
+      await clientsApi.create({
+        companyName: cleanLine(formData.companyName),
+        email: cleanCompact(formData.email),
+        contactName: cleanLine(formData.contactName),
+      });
       onSuccess();
       setFormData({ companyName: '', email: '', contactName: '' });
       onClose();
@@ -53,7 +58,7 @@ export function CreateClientModal({ isOpen, onClose, onSuccess }: CreateClientMo
                 type="text"
                 required
                 value={formData.companyName}
-                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, companyName: normaliseTyping(e.target.value) })}
                 className="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                 placeholder="Acme Corp"
               />
@@ -64,7 +69,7 @@ export function CreateClientModal({ isOpen, onClose, onSuccess }: CreateClientMo
                 type="email"
                 required
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, email: cleanCompact(e.target.value) })}
                 className="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                 placeholder="admin@acme.com"
               />
@@ -74,7 +79,7 @@ export function CreateClientModal({ isOpen, onClose, onSuccess }: CreateClientMo
               <input
                 type="text"
                 value={formData.contactName}
-                onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, contactName: normaliseTyping(e.target.value) })}
                 className="w-full rounded-lg border border-gray-300 p-2.5 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                 placeholder="Jane Doe"
               />
